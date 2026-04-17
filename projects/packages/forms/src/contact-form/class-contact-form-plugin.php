@@ -569,6 +569,16 @@ class Contact_Form_Plugin {
 			unset( $atts['defaultValue'] );
 		}
 
+		// Serialize the conditionalLogic object so it survives the shortcode roundtrip.
+		// Only emit when explicitly enabled to keep the shortcode and frontend context lean.
+		if ( isset( $atts['conditionalLogic'] ) ) {
+			$logic = $atts['conditionalLogic'];
+			if ( is_array( $logic ) && ! empty( $logic['enabled'] ) ) {
+				$atts['conditionallogic'] = \wp_json_encode( $logic, JSON_UNESCAPED_SLASHES | JSON_HEX_AMP );
+			}
+			unset( $atts['conditionalLogic'] );
+		}
+
 		// Process inner blocks to shortcode attributes.
 		if ( $block && ! empty( $block->parsed_block['innerBlocks'] ) ) {
 			// Only apply the block style classes to the field wrapper if the field is one of the new inner block types.

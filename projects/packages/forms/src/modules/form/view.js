@@ -11,6 +11,7 @@ import {
 /*
  * Internal dependencies
  */
+import { evaluateConditionalLogic } from '../../blocks/shared/util/conditional-logic.ts';
 import { validateField, isEmptyValue } from '../../contact-form/js/validate-helper.js';
 import { getRating } from '../field-rating/view.js';
 import { maybeAddColonToLabel, maybeTransformValue, getImages, getUrl } from './helpers.js';
@@ -447,6 +448,23 @@ const { state, actions } = store( NAMESPACE, {
 			const fieldId = context.fieldId;
 			const field = context.fields[ fieldId ];
 			return field?.value || '';
+		},
+
+		get isFieldHidden() {
+			const context = getContext();
+			const logic = context.fieldConditionalLogic;
+
+			if ( ! logic || ! logic.enabled ) {
+				return false;
+			}
+
+			const fields = context.fields || {};
+			const values = {};
+			for ( const id in fields ) {
+				values[ id ] = fields[ id ]?.value;
+			}
+
+			return ! evaluateConditionalLogic( logic, values ).visible;
 		},
 	},
 

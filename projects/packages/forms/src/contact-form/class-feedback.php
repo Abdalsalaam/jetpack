@@ -2144,16 +2144,37 @@ class Feedback {
 		$fields = array();
 
 		$field_ids = $form->get_field_ids();
-		// For all fields, grab label and value
-		$i = 1;
+
+		// Collect renderable fields and their submitted values up front so conditional logic
+		// rules (which may reference any sibling field) can be evaluated in the loop below.
+		$renderable  = array();
+		$form_values = array();
 		foreach ( $field_ids['all'] as $field_id ) {
 			$field = $form->fields[ $field_id ];
 			$type  = $field->get_attribute( 'type' );
 			if ( ! $field->is_field_renderable( $type ) ) {
 				continue;
 			}
+			$value                    = $this->get_field_value( $field_id, $post_data, $type );
+			$form_values[ $field_id ] = $value;
+			$renderable[ $field_id ]  = array(
+				'field' => $field,
+				'type'  => $type,
+				'value' => $value,
+			);
+		}
 
-			$value = $this->get_field_value( $field_id, $post_data, $type );
+		$i = 1;
+		foreach ( $renderable as $field_id => $entry ) {
+			$field = $entry['field'];
+			$type  = $entry['type'];
+			$value = $entry['value'];
+
+			$logic = $field->get_attribute( 'conditionallogic' );
+			if ( is_array( $logic ) && ! empty( $logic['enabled'] ) && ! Conditional_Logic::evaluate( $logic, $form_values ) ) {
+				continue;
+			}
+
 			$label = wp_strip_all_tags( $field->get_attribute( 'label' ) );
 			$key   = $i . '_' . $label;
 
@@ -2169,7 +2190,7 @@ class Feedback {
 			if ( ! $this->has_file && $fields[ $key ]->has_file() ) {
 				$this->has_file = true;
 			}
-			++$i; // Increment prefix counter for the next field.
+			++$i;
 		}
 
 		return $fields;

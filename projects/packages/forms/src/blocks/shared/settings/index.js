@@ -20,6 +20,15 @@ export default {
 			type: 'boolean',
 			default: true,
 		},
+		conditionalLogic: {
+			type: 'object',
+			default: {
+				enabled: false,
+				action: 'show',
+				logicalOperator: 'any',
+				rules: [],
+			},
+		},
 	},
 	category: 'contact-form',
 	providesContext: {

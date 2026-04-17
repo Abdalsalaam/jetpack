@@ -177,10 +177,19 @@ class Contact_Form_Field extends Contact_Form_Shortcode {
 				'showotheroption'              => null,
 				// derived from block metadata for blockVisibility support
 				'labelhiddenbyblockvisibility' => null,
+				// JSON-encoded conditional logic config; decoded below.
+				'conditionallogic'             => null,
 			),
 			$attributes,
 			'contact-field'
 		);
+
+		if ( ! empty( $attributes['conditionallogic'] ) && is_string( $attributes['conditionallogic'] ) ) {
+			$decoded                        = json_decode( html_entity_decode( $attributes['conditionallogic'], ENT_COMPAT ), true );
+			$attributes['conditionallogic'] = is_array( $decoded ) ? $decoded : null;
+		} elseif ( ! is_array( $attributes['conditionallogic'] ) ) {
+			$attributes['conditionallogic'] = null;
+		}
 
 		// special default for subject field
 		if ( 'subject' === $attributes['type'] && $attributes['default'] === null && $form !== null ) {
@@ -2761,6 +2770,11 @@ class Contact_Form_Field extends Contact_Form_Shortcode {
 			'formHash'          => $this->form->hash,
 		);
 
+		$conditional_logic = $this->get_attribute( 'conditionallogic' );
+		if ( is_array( $conditional_logic ) && ! empty( $conditional_logic['enabled'] ) ) {
+			$context['fieldConditionalLogic'] = $conditional_logic;
+		}
+
 		$interactivity_attrs = ' data-wp-interactive="jetpack/form" ' . wp_interactivity_data_wp_context( $context ) . ' ';
 
 		// Fields with an inset label need an extra wrapper to show the error message below the input.
@@ -2776,7 +2790,7 @@ class Contact_Form_Field extends Contact_Form_Shortcode {
 			$interactivity_attrs = ''; // Reset interactivity attributes for the field wrapper.
 		}
 
-		$field .= "\n<div {$block_style} {$interactivity_attrs} {$shell_field_class} data-wp-init='callbacks.initializeField' data-wp-on--jetpack-form-reset='callbacks.initializeField' >\n"; // new in Jetpack 6.8.0
+		$field .= "\n<div {$block_style} {$interactivity_attrs} {$shell_field_class} data-wp-init='callbacks.initializeField' data-wp-on--jetpack-form-reset='callbacks.initializeField' data-wp-class--jetpack-field--conditionally-hidden=\"state.isFieldHidden\" >\n"; // new in Jetpack 6.8.0
 
 		switch ( $type ) {
 			case 'email':

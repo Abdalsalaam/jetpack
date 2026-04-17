@@ -1659,3 +1659,8 @@ on production builds, the attributes are being reordered, causing side-effects
 		display: block;
 	}
 }
+
+/* Conditional logic hides the entire field wrapper and its inputs. */
+.jetpack-field--conditionally-hidden {
+	display: none !important;
+}
