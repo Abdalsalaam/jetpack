@@ -97,7 +97,7 @@ interface DistributionTabProps {
 }
 
 const DistributionTab = ( { onEditSettings }: DistributionTabProps ) => {
-	const { data: settings } = usePodcastSettings();
+	const { data: settings, isLoading: settingsLoading } = usePodcastSettings();
 	const { issues, isReady, isLoading } = useValidationIssues();
 	const categoryId = settings?.podcasting_category_id ?? 0;
 	// Pull the configured category record so we can derive the feed URL
@@ -124,9 +124,9 @@ const DistributionTab = ( { onEditSettings }: DistributionTabProps ) => {
 	const pocketcastsApp = PODCAST_APPS.find( a => a.id === 'pocketcasts' ) ?? null;
 	const directoryApps = PODCAST_APPS.filter( a => a.id !== 'pocketcasts' );
 	const hasTitle = !! settings?.podcasting_title;
-	const isPocketcastsBlocked = isLoading || ! isEnabled || ! hasTitle;
+	const isPocketcastsBlocked = settingsLoading || ! isEnabled || ! hasTitle;
 	let pocketcastsBlockedTooltip = '';
-	if ( isLoading ) {
+	if ( settingsLoading ) {
 		pocketcastsBlockedTooltip = CHECKING_LABEL;
 	} else if ( ! isEnabled ) {
 		pocketcastsBlockedTooltip = NEED_CATEGORY_LABEL;
