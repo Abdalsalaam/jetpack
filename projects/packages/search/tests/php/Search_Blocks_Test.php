@@ -315,25 +315,63 @@ class Search_Blocks_Test extends TestCase {
 	}
 
 	/**
-	 * The takeover hinges on `search` being replaced by `jetpack-search` at
-	 * the front of the hierarchy: that's what makes core resolve our plugin
-	 * template instead of the theme's `search.html`.
+	 * Subclass forcing `block_templates_active()` so the block-theme path
+	 * runs without a real block theme in the dbless env.
+	 *
+	 * @return class-string<Search_Blocks>
 	 */
-	public function test_prepend_search_template_puts_unique_slug_first() {
-		$result = Search_Blocks::prepend_search_template( array( 'search', 'index' ) );
-		$this->assertSame( array( 'jetpack-search', 'search', 'index' ), $result );
+	private function block_theme_search_blocks(): string {
+		return get_class(
+			new class() extends Search_Blocks {
+				protected static function block_templates_active(): bool {
+					return true;
+				}
+			}
+		);
 	}
 
 	/**
-	 * If the slug is already in the hierarchy (e.g. a second init pass or
-	 * another filter already prepended it), the result must not contain
-	 * duplicate `jetpack-search` entries — core would otherwise do two
-	 * identical registry lookups per search request.
+	 * On a block-theme search request the slug is moved to the front of the
+	 * hierarchy, and a pre-existing copy is de-duplicated rather than doubled.
 	 */
-	public function test_prepend_search_template_dedupes_existing_slug() {
-		$result = Search_Blocks::prepend_search_template( array( 'jetpack-search', 'search', 'index' ) );
-		$this->assertSame( array( 'jetpack-search', 'search', 'index' ), $result );
-		$this->assertCount( 1, array_keys( $result, 'jetpack-search', true ) );
+	public function test_prepend_search_template_prepends_unique_slug() {
+		$original_query = $GLOBALS['wp_query'] ?? null;
+		try {
+			$GLOBALS['wp_query'] = new \WP_Query( array( 's' => 'boots' ) );
+			$class               = $this->block_theme_search_blocks();
+
+			$this->assertSame(
+				array( 'jetpack-search', 'search', 'index' ),
+				$class::prepend_search_template( array( 'search', 'index' ) )
+			);
+			$deduped = $class::prepend_search_template( array( 'jetpack-search', 'search', 'index' ) );
+			$this->assertSame( array( 'jetpack-search', 'search', 'index' ), $deduped );
+			$this->assertCount( 1, array_keys( $deduped, 'jetpack-search', true ) );
+		} finally {
+			$GLOBALS['wp_query'] = $original_query;
+		}
+	}
+
+	/**
+	 * The hierarchy is returned untouched unless the request is a search on a
+	 * block theme — the slug only resolves through the block-template system.
+	 */
+	public function test_prepend_search_template_skips_outside_block_theme_search() {
+		$original_query = $GLOBALS['wp_query'] ?? null;
+		try {
+			$input = array( 'search', 'index' );
+
+			$GLOBALS['wp_query'] = new \WP_Query();
+			$this->assertFalse( is_search() );
+			$this->assertSame( $input, Search_Blocks::prepend_search_template( $input ) );
+
+			$GLOBALS['wp_query'] = new \WP_Query( array( 's' => 'boots' ) );
+			$this->assertTrue( is_search() );
+			$this->assertFalse( wp_is_block_theme(), 'dbless default theme is expected to be classic' );
+			$this->assertSame( $input, Search_Blocks::prepend_search_template( $input ) );
+		} finally {
+			$GLOBALS['wp_query'] = $original_query;
+		}
 	}
 
 	/**
@@ -405,6 +443,7 @@ class Search_Blocks_Test extends TestCase {
 	public function test_init_registers_template_hooks_when_embedded() {
 		$this->reset_search_blocks_hooks();
 		$this->set_module_active( true );
+		add_filter( 'jetpack_search_theme_supports_embedded_experience', '__return_true' );
 		update_option( Module_Control::SEARCH_MODULE_EXPERIENCE_OPTION_KEY, Module_Control::EXPERIENCE_EMBEDDED );
 
 		Search_Blocks::init();
@@ -418,6 +457,33 @@ class Search_Blocks_Test extends TestCase {
 			'prepend_search_template must hook into search_template_hierarchy on embedded'
 		);
 
+		remove_filter( 'jetpack_search_theme_supports_embedded_experience', '__return_true' );
+		delete_option( Module_Control::SEARCH_MODULE_EXPERIENCE_OPTION_KEY );
+	}
+
+	/**
+	 * Saved Embedded but on a non-block theme: the experience resolves to Theme
+	 * search (inline), so the FSE template-takeover hooks must NOT register —
+	 * otherwise `/?s=…` would resolve to a template the theme can't render.
+	 */
+	public function test_init_does_not_register_template_hooks_when_embedded_on_non_block_theme() {
+		$this->reset_search_blocks_hooks();
+		$this->set_module_active( true );
+		add_filter( 'jetpack_search_theme_supports_embedded_experience', '__return_false' );
+		update_option( Module_Control::SEARCH_MODULE_EXPERIENCE_OPTION_KEY, Module_Control::EXPERIENCE_EMBEDDED );
+
+		Search_Blocks::init();
+
+		$this->assertFalse(
+			has_action( 'init', array( Search_Blocks::class, 'register_search_template' ) ),
+			'register_search_template must not hook into init when the theme cannot render Embedded'
+		);
+		$this->assertFalse(
+			has_filter( 'search_template_hierarchy', array( Search_Blocks::class, 'prepend_search_template' ) ),
+			'prepend_search_template must not hook into search_template_hierarchy on a non-block theme'
+		);
+
+		remove_filter( 'jetpack_search_theme_supports_embedded_experience', '__return_false' );
 		delete_option( Module_Control::SEARCH_MODULE_EXPERIENCE_OPTION_KEY );
 	}
 
@@ -499,7 +565,8 @@ class Search_Blocks_Test extends TestCase {
 			}
 		}
 
-		Search_Blocks::register_search_template();
+		$class = $this->block_theme_search_blocks();
+		$class::register_search_template();
 
 		$namespace = $this->invoke_protected( 'get_parent_plugin_slug' );
 		$expected  = $namespace . '//jetpack-search';
@@ -520,12 +587,8 @@ class Search_Blocks_Test extends TestCase {
 	}
 
 	/**
-	 * If the bundled template file can't be read, registration must be a
-	 * no-op — otherwise the slug we prepended to `search_template_hierarchy`
-	 * would resolve to an empty plugin template and take over `/?s=...`
-	 * with a blank page. Simulate the missing-file case with an anonymous
-	 * subclass that overrides `get_search_template_content()` to return ''
-	 * (the actual file is always present in the repo).
+	 * Empty template content must be a no-op — otherwise the prepended slug
+	 * resolves to an empty template and renders a blank `/?s=...` page.
 	 */
 	public function test_register_search_template_skips_when_content_empty() {
 		if ( ! function_exists( 'register_block_template' ) ) {
@@ -538,18 +601,44 @@ class Search_Blocks_Test extends TestCase {
 			}
 		}
 
-		// Stub empty content by temporarily overriding the method's output
-		// via a mock subclass. Simplest: run register_search_template on a
-		// subclass that returns '' from get_search_template_content().
+		// block_templates_active() forced true so the block-theme guard
+		// doesn't short-circuit before the empty-content check.
 		$anon = new class() extends Search_Blocks {
 			protected static function get_search_template_content(): string {
 				return '';
+			}
+			protected static function block_templates_active(): bool {
+				return true;
 			}
 		};
 		$anon::register_search_template();
 
 		foreach ( array( 'jetpack-search//jetpack-search', 'jetpack//jetpack-search' ) as $name ) {
 			$this->assertFalse( $registry->is_registered( $name ), "Template $name should NOT be registered when content is empty." );
+		}
+	}
+
+	/**
+	 * On a classic theme registration must be a no-op. The dbless default
+	 * theme is classic, so the real guard is exercised here.
+	 */
+	public function test_register_search_template_skips_on_classic_theme() {
+		if ( ! function_exists( 'register_block_template' ) ) {
+			$this->markTestSkipped( 'register_block_template() unavailable in this test environment.' );
+		}
+		$this->assertFalse( wp_is_block_theme(), 'dbless default theme is expected to be classic' );
+
+		$registry = \WP_Block_Templates_Registry::get_instance();
+		foreach ( array( 'jetpack-search//jetpack-search', 'jetpack//jetpack-search' ) as $name ) {
+			if ( $registry->is_registered( $name ) ) {
+				$registry->unregister( $name );
+			}
+		}
+
+		Search_Blocks::register_search_template();
+
+		foreach ( array( 'jetpack-search//jetpack-search', 'jetpack//jetpack-search' ) as $name ) {
+			$this->assertFalse( $registry->is_registered( $name ), "Template $name must NOT be registered on a classic theme." );
 		}
 	}
 

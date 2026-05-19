@@ -5,6 +5,7 @@ import {
 	CardBody,
 	Notice,
 	Tooltip,
+	VisuallyHidden,
 	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalHStack as HStack,
 	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
@@ -24,7 +25,7 @@ import { PODCAST_APPS } from './podcast-apps';
 import PocketCastsRow from './podcast-apps/pocketcasts/inline-row';
 import './style.scss';
 import SubmitModal from './submit-modal';
-import type { PodcatcherId } from '../types';
+import type { PodcastShowState, PodcatcherId } from '../types';
 import type { FocusEvent } from 'react';
 
 const prefersReducedMotion = (): boolean =>
@@ -40,6 +41,21 @@ const COPIED_LABEL = __( 'Copied!', 'jetpack-podcast' );
 const COPY_LINK_LABEL = __( 'Copy link', 'jetpack-podcast' );
 const CHECKING_LABEL = __( 'Checking your podcast setup…', 'jetpack-podcast' );
 const NEED_CATEGORY_LABEL = __( 'Set a podcast category in Settings first', 'jetpack-podcast' );
+const PENDING_LABEL = __( 'Pending', 'jetpack-podcast' );
+const LIVE_LABEL = __( 'Live', 'jetpack-podcast' );
+
+const StateBadge = ( { state }: { state: PodcastShowState } ) => {
+	if ( state !== 'pending' && state !== 'active' ) {
+		return null;
+	}
+	const label = state === 'active' ? LIVE_LABEL : PENDING_LABEL;
+	return (
+		<span className={ `podcast__state-badge podcast__state-badge--${ state }` }>
+			<VisuallyHidden as="span">{ __( 'Status:', 'jetpack-podcast' ) } </VisuallyHidden>
+			{ label }
+		</span>
+	);
+};
 
 const FeedCopyField = ( { value }: { value: string } ) => {
 	const [ copied, setCopied ] = useState( false );
@@ -236,6 +252,7 @@ const DistributionTab = ( { onEditSettings }: DistributionTabProps ) => {
 							<VStack as="ul" spacing={ 0 } className="podcast__directory-list">
 								{ directoryApps.map( app => {
 									const { Logo } = app;
+									const state = settings?.podcasting_show_states?.[ app.id ] ?? '';
 									return (
 										<HStack
 											as="li"
@@ -244,11 +261,12 @@ const DistributionTab = ( { onEditSettings }: DistributionTabProps ) => {
 											justify="space-between"
 											className="podcast__directory-row"
 										>
-											<HStack alignment="center" spacing={ 4 } expanded={ false }>
+											<HStack alignment="center" spacing={ 3 } expanded={ false }>
 												<span aria-hidden="true">
 													<Logo />
 												</span>
 												<Text weight={ 500 }>{ app.name }</Text>
+												<StateBadge state={ state } />
 											</HStack>
 											<Tooltip text={ isSubmitBlocked ? blockedTooltip : '' }>
 												<Button

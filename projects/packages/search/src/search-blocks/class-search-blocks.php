@@ -757,9 +757,12 @@ class Search_Blocks {
 	 * DB-stored customizations continue to take precedence: if a site owner
 	 * edits this template in the Site Editor, the `custom` source wins during
 	 * resolution automatically.
+	 *
+	 * Skipped on classic themes: the registry is only consulted by the Site
+	 * Editor and the block-theme render path. Re-checked every `init`.
 	 */
 	public static function register_search_template() {
-		if ( ! function_exists( 'register_block_template' ) ) {
+		if ( ! function_exists( 'register_block_template' ) || ! static::block_templates_active() ) {
 			return;
 		}
 		$content = static::get_search_template_content();
@@ -832,10 +835,17 @@ class Search_Blocks {
 	 * can't accumulate duplicates from a second init pass or another filter
 	 * on the same hook.
 	 *
+	 * Only takes effect on a block-theme search request — the slug resolves
+	 * only through the block-template system, so injecting it anywhere else
+	 * just mis-shapes the hierarchy.
+	 *
 	 * @param string[] $templates Template hierarchy slugs.
 	 * @return string[]
 	 */
 	public static function prepend_search_template( $templates ) {
+		if ( ! is_search() || ! static::block_templates_active() ) {
+			return $templates;
+		}
 		$templates = array_values(
 			array_filter(
 				(array) $templates,
@@ -846,6 +856,17 @@ class Search_Blocks {
 		);
 		array_unshift( $templates, self::SEARCH_TEMPLATE_SLUG );
 		return $templates;
+	}
+
+	/**
+	 * Whether the active theme resolves block templates. Wraps
+	 * `wp_is_block_theme()` as an overridable seam so tests can exercise the
+	 * block-theme path without standing up a block theme.
+	 *
+	 * @return bool
+	 */
+	protected static function block_templates_active(): bool {
+		return wp_is_block_theme();
 	}
 
 	/**
@@ -1217,6 +1238,62 @@ class Search_Blocks {
 			return;
 		}
 		self::$is_initial_loading_cache = null;
+	}
+
+	/**
+	 * Whether the current request is scoped to exactly the `product` post
+	 * type via the URL. In practice this is driven by the Jetpack Search
+	 * array shape `?post_types[]=product` — the shape store/url-state.js
+	 * writes and round-trips. The scalar `?post_type=product` is also
+	 * accepted for completeness, but a top-level `?post_type=product` is a
+	 * WordPress core query var that reroutes the request to the product
+	 * post-type archive (the WooCommerce shop template) before any Jetpack
+	 * Search block renders, so it does not reach this code on a normal
+	 * search page; it only matters for a custom search context that carries
+	 * the scalar param within the Search template.
+	 *
+	 * Used by results-list/render.php to auto-switch to the product layout
+	 * for a product search without the author hand-picking it. "Exactly
+	 * product" is deliberate: a mixed request (e.g.
+	 * `?post_types[]=product&post_types[]=post`) keeps the saved layout so
+	 * non-product results never render as product cards. Reads `$_GET`
+	 * directly rather than `parse_url_filters()` because post-type scope is
+	 * not a registered visitor-facing filter — it never lands in
+	 * `activeFilters`.
+	 *
+	 * Deliberately not memoized (unlike `is_initial_loading()`): the only
+	 * caller is results-list/render.php, and a page carries one such block,
+	 * so this runs at most once per request. Mirrors `parse_url_filters()`,
+	 * which is likewise uncached. Skipping the static-cache + test-reset
+	 * plumbing keeps the no-shared-state contract the tests rely on.
+	 *
+	 * @return bool
+	 */
+	public static function request_is_product_only(): bool {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- read-only URL state; sanitized per-value below.
+		$raw = wp_unslash( $_GET );
+		if ( ! is_array( $raw ) ) {
+			return false;
+		}
+
+		$requested = array();
+		foreach ( array( 'post_type', 'post_types' ) as $param ) {
+			if ( ! isset( $raw[ $param ] ) ) {
+				continue;
+			}
+			$values = is_array( $raw[ $param ] ) ? $raw[ $param ] : array( $raw[ $param ] );
+			foreach ( $values as $value ) {
+				if ( ! is_scalar( $value ) ) {
+					continue;
+				}
+				$slug = sanitize_key( (string) $value );
+				if ( '' !== $slug ) {
+					$requested[ $slug ] = true;
+				}
+			}
+		}
+
+		return array( 'product' ) === array_keys( $requested );
 	}
 
 	/**
