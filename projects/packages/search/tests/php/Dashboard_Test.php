@@ -7,6 +7,7 @@
 
 namespace Automattic\Jetpack\Search;
 
+use Automattic\Jetpack\Connection\Manager as Connection_Manager;
 use Automattic\Jetpack\Status\Host;
 
 /**
@@ -46,10 +47,15 @@ class Dashboard_Test extends TestCase {
 			->getMock();
 		$host->expects( $this->once() )->method( 'is_wpcom_simple' )->willReturn( true );
 
+		$connection_manager = $this->createMock( Connection_Manager::class );
+		$module_control     = $this->getMockBuilder( Module_Control::class )
+			->disableOriginalConstructor()
+			->getMock();
+
 		$dashboard = new Dashboard(
 			$plan,
-			null,
-			null,
+			$connection_manager,
+			$module_control,
 			$host
 		);
 

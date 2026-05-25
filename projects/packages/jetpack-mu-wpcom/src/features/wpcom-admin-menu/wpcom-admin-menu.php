@@ -13,7 +13,6 @@ use Automattic\Jetpack\Podcast\Admin_Page as Podcast_Admin_Page;
 use Automattic\Jetpack\Podcast\Podcast;
 use Automattic\Jetpack\Redirect;
 use Automattic\Jetpack\Search\Dashboard as Search_Dashboard;
-use Automattic\Jetpack\Subscribers_Dashboard\Dashboard as Subscribers_Dashboard;
 
 require_once __DIR__ . '/../../common/wpcom-callout.php';
 
