@@ -51,7 +51,7 @@
 		"@automattic/number-formatters": "workspace:*",
 		"@automattic/popup-monitor": "1.0.2",
 		"@automattic/social-previews": "workspace:*",
-		"@automattic/ui": "1.0.2",
+		"@automattic/ui": "2.0.0",
 		"@tanstack/react-query": "5.101.2",
 		"@wordpress/admin-ui": "2.5.0",
 		"@wordpress/api-fetch": "7.51.0",
