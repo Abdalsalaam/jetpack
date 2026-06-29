@@ -216,6 +216,7 @@ export { ORDER_ATTRIBUTION_VIEWS } from './api/report-order-attribution-summary-
 export { getDefaultIntervalForPeriod, getDateFormatFromInterval } from './utils/interval';
 export { getDefaultPreset, getDefaultQueryParams } from './defaults';
 export { exportReport, fetchStatsProxy, getStatsProxyPath } from './api';
+export { DASHBOARD_REST_NAMESPACE } from './api/constants';
 export type {
 	ExportReportParams,
 	ExportReportResponse,
