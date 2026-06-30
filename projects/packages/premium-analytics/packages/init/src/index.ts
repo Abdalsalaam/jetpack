@@ -6,7 +6,7 @@ import { DASHBOARD_REST_NAMESPACE } from '@jetpack-premium-analytics/data';
 import apiFetch from '@wordpress/api-fetch';
 import { store as bootStore } from '@wordpress/boot';
 import { store as coreStore } from '@wordpress/core-data';
-import { dispatch } from '@wordpress/data';
+import { dispatch, select } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 import { chartBar } from '@wordpress/icons';
 
@@ -45,6 +45,16 @@ function setupApiFetch(): void {
  * `src/widget-modules.php`), independent of core's `wp/v2` endpoint.
  */
 function registerWidgetModulesEntity(): void {
+	if (
+		(
+			select( coreStore ) as unknown as {
+				getEntityConfig: ( kind: string, name: string ) => unknown;
+			}
+		 ).getEntityConfig( 'root', 'widgetModule' )
+	) {
+		return;
+	}
+
 	const { addEntities } = dispatch( coreStore ) as unknown as {
 		addEntities: ( entities: object[] ) => void;
 	};

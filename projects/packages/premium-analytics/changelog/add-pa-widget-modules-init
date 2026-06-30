@@ -1,4 +1,4 @@
 Significance: patch
 Type: changed
 
-Move the widget-modules entity registration to the page init module so it runs once at boot instead of on every dashboard beforeLoad.
+Dashboard: register the widget modules data source once at startup rather than on each navigation. Internal refactor with no user-facing change.
