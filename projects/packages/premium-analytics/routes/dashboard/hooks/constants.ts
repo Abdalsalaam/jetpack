@@ -1,9 +1,4 @@
 /**
- * External dependencies
- */
-import { DASHBOARD_REST_NAMESPACE } from '@jetpack-premium-analytics/data';
-
-/**
  * Identifiers shared by the dashboard hooks and mirrored on the server.
  *
  * Centralized so the preferences scope, keys, dashboard name, and REST
@@ -32,10 +27,3 @@ export const DASHBOARD_LAYOUT_KEY = 'dashboardLayout';
 
 /** Preferences key holding the dashboard grid settings. */
 export const DASHBOARD_GRID_SETTINGS_KEY = 'dashboardGridSettings';
-
-/**
- * REST namespace that exposes the dashboard's default layout. Re-exported from
- * the data package so the `jetpack/v4` literal has a single source of truth
- * shared with the app-boot widget-modules registration.
- */
-export { DASHBOARD_REST_NAMESPACE };

@@ -1,9 +1,10 @@
+import { DASHBOARD_REST_NAMESPACE } from '@jetpack-premium-analytics/data';
 import apiFetch from '@wordpress/api-fetch';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { store as preferencesStore } from '@wordpress/preferences';
 import { useCallback, useMemo } from 'react';
 import { isDashboardSectionLayouts } from '../config';
-import { DASHBOARD_PREFERENCES_SCOPE, DASHBOARD_REST_NAMESPACE } from './constants';
+import { DASHBOARD_PREFERENCES_SCOPE } from './constants';
 import { useDashboardLayout } from './use-dashboard-layout';
 import type { DashboardSectionId, DashboardSectionLayouts } from '../config';
 import type { DashboardName } from './use-dashboard-layout';

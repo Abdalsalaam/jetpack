@@ -6,7 +6,7 @@ import { DASHBOARD_REST_NAMESPACE } from '@jetpack-premium-analytics/data';
 import apiFetch from '@wordpress/api-fetch';
 import { store as bootStore } from '@wordpress/boot';
 import { store as coreStore } from '@wordpress/core-data';
-import { dispatch, select } from '@wordpress/data';
+import { dispatch } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 import { chartBar } from '@wordpress/icons';
 
@@ -42,22 +42,13 @@ function setupApiFetch(): void {
  * Register the widget-modules discovery entity so the dashboard stage's
  * `getEntityRecords` read resolves and feeds the records to `useWidgetTypes`.
  * Premium Analytics serves the records from its own namespace (see
- * `src/widget-modules.php`), independent of core's `wp/v2` endpoint. Runs once
- * at boot. Guarded for idempotency in case init() ever runs more than once
- * (re-mount, HMR, a future second boot).
+ * `src/widget-modules.php`), independent of core's `wp/v2` endpoint.
  */
 function registerWidgetModulesEntity(): void {
-	const coreSelect = select( coreStore ) as unknown as {
-		getEntityConfig: ( kind: string, name: string ) => unknown;
-	};
-	if ( coreSelect.getEntityConfig( 'root', 'widgetModule' ) ) {
-		return;
-	}
-
-	const coreDispatch = dispatch( coreStore ) as unknown as {
+	const { addEntities } = dispatch( coreStore ) as unknown as {
 		addEntities: ( entities: object[] ) => void;
 	};
-	coreDispatch.addEntities( [
+	addEntities( [
 		{
 			name: 'widgetModule',
 			kind: 'root',

@@ -1,14 +1,14 @@
 /**
+ * External dependencies
+ */
+import { DASHBOARD_REST_NAMESPACE } from '@jetpack-premium-analytics/data';
+/**
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { store as preferencesStore } from '@wordpress/preferences';
-import {
-	DASHBOARD_LAYOUT_KEY,
-	DASHBOARD_PREFERENCES_SCOPE,
-	DASHBOARD_REST_NAMESPACE,
-} from '../constants';
+import { DASHBOARD_LAYOUT_KEY, DASHBOARD_PREFERENCES_SCOPE } from '../constants';
 import type { DashboardWidget } from '@wordpress/widget-dashboard';
 /**
  * Internal dependencies
