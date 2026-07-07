@@ -2,7 +2,11 @@
  * External dependencies
  */
 import { getScriptData } from '@automattic/jetpack-script-data';
-import { ensureCoreSettingsReady, normalizeReportParams } from '@jetpack-premium-analytics/data';
+import {
+	DASHBOARD_REST_NAMESPACE,
+	ensureCoreSettingsReady,
+	normalizeReportParams,
+} from '@jetpack-premium-analytics/data';
 import { store as coreStore } from '@wordpress/core-data';
 import { dispatch, select } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
@@ -10,7 +14,6 @@ import { redirect } from '@wordpress/route';
 /**
  * Internal dependencies
  */
-import { DASHBOARD_REST_NAMESPACE } from '../dashboard/hooks/constants';
 import { resolveTabId } from './config';
 
 type PostDetailParams = { postId?: string };
