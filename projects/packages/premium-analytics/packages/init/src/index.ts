@@ -45,19 +45,11 @@ function setupApiFetch(): void {
  * `src/widget-modules.php`), independent of core's `wp/v2` endpoint.
  */
 function registerWidgetModulesEntity(): void {
-	if (
-		(
-			select( coreStore ) as unknown as {
-				getEntityConfig: ( kind: string, name: string ) => unknown;
-			}
-		 ).getEntityConfig( 'root', 'widgetModule' )
-	) {
+	if ( select( coreStore ).getEntityConfig( 'root', 'widgetModule' ) ) {
 		return;
 	}
 
-	const { addEntities } = dispatch( coreStore ) as unknown as {
-		addEntities: ( entities: object[] ) => void;
-	};
+	const { addEntities } = dispatch( coreStore );
 	addEntities( [
 		{
 			name: 'widgetModule',
