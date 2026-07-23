@@ -24,25 +24,27 @@ type DefaultImage =
 	| 'wavatar';
 
 /**
- * Background colors for the "initials" identity avatars, drawn from the
- * Color Studio palette's 50 shades (https://color-studio.blog/).
+ * Background colors for the "initials" identity avatars.
+ *
+ * Mirrors the collaboration avatar palette used by the Gutenberg editor's
+ * collab sidebar, see
+ * https://github.com/WordPress/gutenberg/blob/3d514b465a0cc5d780041be55b158173fa3327ee/packages/editor/src/components/collab-sidebar/utils.js#L25
  *
  * Hex values without the leading `#`, as Gravatar's `bg_color` param expects.
  */
 const IDENTITY_BG_COLORS = [
-	'3858e9', // Blue 50
-	'984a9c', // Purple 50
-	'c9356e', // Pink 50
-	'd63638', // Red 50
-	'b26200', // Orange 50
-	'9d6e00', // Yellow 50
-	'008a20', // Green 50
-	'008763', // Celadon 50
+	'6F42C1', // Purple
+	'D94145', // Red
+	'FBBF24', // Orange
+	'FF35EE', // Magenta
+	'879F11', // Olive
+	'0F766E', // Teal
+	'00CFFF', // Cyan
 ];
 
 /**
  * Picks a stable background color for an email's identity avatar, so the same
- * address always renders on the same Color Studio color.
+ * address always renders on the same color.
  *
  * Uses the first 8 hex chars of the normalized email's SHA-256, matching
  * `Feedback_Author::get_avatar_url()` in the Forms package.
