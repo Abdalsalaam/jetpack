@@ -1,19 +1,11 @@
 <?php
 /**
- * TEMPORARY: interim port for WOOA7S-1550 — remove when the shared sync-modules composer package lands.
+ * Premium Analytics glue for the shared WooCommerce Analytics sync module.
  *
- * Plain replacement for woocommerce-analytics' src/Internal/Jetpack/Sync/Configuration.php.
- * The upstream class is wired through a PHP-DI container and RegistrableInterface; the
- * monorepo package has no DI container, so this is a plain class invoked from
- * {@see \Automattic\Jetpack\PremiumAnalytics\Analytics::init()}.
- *
- * It registers the same Jetpack Sync filters upstream's Configuration does and ensures the
- * Sync feature so the `woocommerce_analytics` full-sync module runs. Connection bootstrap and
- * the admin-script enqueue from the upstream class are intentionally omitted — they are handled
- * elsewhere in the monorepo and are out of scope for this sync port.
- *
- * WooCommerce is a runtime (not composer) dependency, so {@see register()} guards on WooCommerce
- * being active before hooking anything; the ported module is only ever instantiated in that case.
+ * The `woocommerce_analytics` module, its helpers, checksum tables, and minimum
+ * data requirements live in the jetpack-sync package. This class owns the
+ * consumer-specific registration, full-sync policy, Config bootstrap, package
+ * version signal, legacy-module arbitration, and Bookings post meta whitelist.
  *
  * @package automattic/jetpack-premium-analytics
  */
@@ -21,36 +13,63 @@
 namespace Automattic\Jetpack\PremiumAnalytics\Sync;
 
 use Automattic\Jetpack\Config;
-use Automattic\Jetpack\Sync\Data_Settings;
-use Automattic\Jetpack\Sync\Modules as JetpackSyncModules;
 use Automattic\Jetpack\Sync\Modules\Meta as Meta_Module;
 use Automattic\Jetpack\Sync\Modules\Posts as Posts_Module;
 use Automattic\Jetpack\Sync\Modules\Term_Relationships as Term_Relationships_Module;
 use Automattic\Jetpack\Sync\Modules\Terms as Terms_Module;
+use Automattic\Jetpack\Sync\Modules\WooCommerce_Analytics as WooCommerce_Analytics_Module;
+use Automattic\WooCommerce\Utilities\FeaturesUtil;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers the WooCommerce Analytics Jetpack Sync module and its supporting filters.
+ * Opts in to the shared WooCommerce Analytics sync module and registers the
+ * Premium Analytics-specific sync configuration.
  */
 class Configuration {
 
-	use Utilities;
+	/**
+	 * FQCN of the Analytics module shipped by the standalone plugin.
+	 *
+	 * @var string
+	 */
+	const ANALYTICS_PLUGIN_MODULE_FQCN = 'Automattic\\WooCommerce\\Analytics\\Internal\\Jetpack\\Sync\\Modules\\Analytics';
 
 	/**
-	 * List of post meta to add to Sync's post meta whitelist.
-	 * Any changes to these meta will by synced to WordPress.com.
+	 * FQCN of the Analytics module shipped by WooCommerce AI.
+	 *
+	 * @var string
+	 */
+	const WOO_AI_MODULE_FQCN = 'WooCommerce\\AI\\Sync\\Modules\\Analytics';
+
+	/**
+	 * FQCN of the interim Analytics module from older Premium Analytics versions.
+	 *
+	 * @var string
+	 */
+	const PREMIUM_ANALYTICS_MODULE_FQCN = 'Automattic\\Jetpack\\PremiumAnalytics\\Sync\\WooCommerce_Analytics_Module';
+
+	/**
+	 * Existing implementations that remain authoritative when present.
+	 *
+	 * @var string[]
+	 */
+	const LEGACY_MODULE_FQCNS = array(
+		self::ANALYTICS_PLUGIN_MODULE_FQCN,
+		self::WOO_AI_MODULE_FQCN,
+		self::PREMIUM_ANALYTICS_MODULE_FQCN,
+	);
+
+	/**
+	 * Bookings post meta to add to Sync's post meta whitelist. Bookings are synced
+	 * via the Posts + Meta modules; there is no dedicated bookings sync module.
+	 *
+	 * Product meta needed by analytics reports is whitelisted by the shared module.
 	 *
 	 * @static
 	 * @var array
 	 */
 	private static $postmeta_to_sync = array(
-		// Products.
-		'_stock',
-		'_stock_quantity',
-		'_cogs_total_value',
-		'_global_unique_id',
-		// Bookings.
 		'_booking_parent_id',
 		'_booking_duplicate_of',
 		'_booking_product_id',
@@ -68,8 +87,9 @@ class Configuration {
 	);
 
 	/**
-	 * Entry point called from Analytics::init(). Schedules the Sync hookups on plugins_loaded;
-	 * the actual registration is a no-op unless WooCommerce is active (see {@see configure_sync()}).
+	 * Entry point called from Analytics::init(). Schedules the Sync hookups on
+	 * plugins_loaded; the actual registration is a no-op unless WooCommerce is active
+	 * (see {@see configure_sync()}).
 	 *
 	 * @return void
 	 */
@@ -102,10 +122,8 @@ class Configuration {
 	}
 
 	/**
-	 * Register the Jetpack Sync filters and ensure the Sync feature, when WooCommerce is active.
-	 *
-	 * No-op unless WooCommerce is active, since the module relies on WooCommerce runtime symbols
-	 * (WC_Order, the wc_order_stats table, OrderUtil, etc.).
+	 * Register the Jetpack Sync filters and ensure the Sync feature when WooCommerce
+	 * is active.
 	 *
 	 * @return void
 	 */
@@ -114,28 +132,13 @@ class Configuration {
 			return;
 		}
 
-		add_filter( 'jetpack_sync_modules', array( $this, 'add_woocommerce_analytics_module' ) );
+		// Run after every consumer has contributed its modules so an existing
+		// implementation can remain authoritative during migration.
+		add_filter( 'jetpack_sync_modules', array( $this, 'add_woocommerce_analytics_module' ), PHP_INT_MAX );
 		add_filter( 'jetpack_full_sync_config', array( $this, 'expand_full_sync_config' ) );
-		add_filter( 'jetpack_sync_checksum_allowed_tables', array( $this, 'add_order_stats_to_checksum' ) );
 		add_filter( 'jetpack_sync_post_meta_whitelist', array( $this, 'add_meta_to_sync_post_meta_whitelist' ) );
 
 		( new Config() )->ensure( 'sync', $this->get_jetpack_sync_config() );
-	}
-
-	/**
-	 * Add the WooCommerce Analytics module to the list of Jetpack Sync modules.
-	 *
-	 * Additive: appends to whatever module list is already configured rather than replacing it.
-	 *
-	 * @param array $modules The current list of sync module class names.
-	 * @return array
-	 */
-	public function add_woocommerce_analytics_module( $modules ) {
-		if ( is_array( $modules ) && ! in_array( WooCommerce_Analytics_Module::class, $modules, true ) ) {
-			$modules[] = WooCommerce_Analytics_Module::class;
-		}
-
-		return $modules;
 	}
 
 	/**
@@ -144,50 +147,58 @@ class Configuration {
 	 * @return array Jetpack Sync config array.
 	 */
 	private function get_jetpack_sync_config(): array {
-		$jetpack_sync_modules = array_keys(
-			array_filter(
-				array(
-					WooCommerce_Analytics_Module::class => true, // WooCommerce Analytics module.
-					Meta_Module::class                  => true,
-					Posts_Module::class                 => true,
-					Terms_Module::class                 => true,
-					Term_Relationships_Module::class    => true,
-				)
-			)
-		);
-
-		return array_merge_recursive(
-			Data_Settings::MUST_SYNC_DATA_SETTINGS,
-			array(
-				'jetpack_sync_modules'             => $jetpack_sync_modules,
-				'jetpack_sync_options_whitelist'   => array(
-					'woocommerce_custom_orders_table_enabled', // Required for HPOS checksums.
-					'woocommerce_excluded_report_order_statuses', // Required for generating analytics reports.
-					'woocommerce_date_type', // Date used to determine the date range for analytics reports.
-				),
-				'jetpack_sync_constants_whitelist' => array(
-					// Syncing this triggers WPCom to provision the WC Analytics tables. Defined by the
-					// plugin at load (double underscore, per the JETPACK__VERSION convention). (WOOA7S-1643)
-					// WC_ANALYTICS_VERSION is intentionally omitted: it is defined and whitelisted by the
-					// standalone woocommerce-analytics plugin, and on a PA-only store would only sync null.
-					'JETPACK_PREMIUM_ANALYTICS__VERSION',
-				),
-			)
+		return array(
+			'jetpack_sync_modules'             => array(
+				WooCommerce_Analytics_Module::class,
+				Meta_Module::class,
+				Posts_Module::class,
+				Terms_Module::class,
+				Term_Relationships_Module::class,
+			),
+			'jetpack_sync_constants_whitelist' => array(
+				// Syncing this triggers WPCom to provision the WC Analytics tables. Defined by the
+				// plugin at load (double underscore, per the JETPACK__VERSION convention). (WOOA7S-1643)
+				// WC_ANALYTICS_VERSION is intentionally omitted: it is defined and whitelisted by the
+				// standalone woocommerce-analytics plugin, and on a PA-only store would only sync null.
+				'JETPACK_PREMIUM_ANALYTICS__VERSION',
+			),
 		);
 	}
 
 	/**
-	 * Expand full sync config with module required by WooCommerce Analytics if not already present.
+	 * Add the shared module unless another Analytics implementation is present.
 	 *
-	 * @param array $config The current full sync configuration.
-	 * @return array The modified full sync configuration.
+	 * @param array|mixed $modules Current Sync module class names.
+	 * @return array|mixed Updated Sync module class names.
+	 */
+	public function add_woocommerce_analytics_module( $modules ) {
+		if ( ! is_array( $modules ) ) {
+			return $modules;
+		}
+
+		if ( array_intersect( self::LEGACY_MODULE_FQCNS, $modules ) ) {
+			return array_values( array_diff( $modules, array( WooCommerce_Analytics_Module::class ) ) );
+		}
+
+		if ( ! in_array( WooCommerce_Analytics_Module::class, $modules, true ) ) {
+			$modules[] = WooCommerce_Analytics_Module::class;
+		}
+
+		return $modules;
+	}
+
+	/**
+	 * Add the Analytics module to full sync when the site can sync orders.
+	 *
+	 * @param array $config Current full-sync configuration.
+	 * @return array Updated full-sync configuration.
 	 */
 	public function expand_full_sync_config( array $config ): array {
 		if ( ! $this->can_site_sync_orders() ) {
 			return $config;
 		}
 
-		// Let's ensure Terms and Term_Relationships will always get synced before Posts during Full Sync.
+		// Terms and term relationships must be synced before posts.
 		if ( isset( $config['posts'] ) ) {
 			unset( $config['posts'] );
 			$config += array( 'posts' => 1 );
@@ -201,62 +212,51 @@ class Configuration {
 	}
 
 	/**
-	 * Adds the order stats table to the checksum allowed tables.
+	 * Whether the site may sync WooCommerce order data.
 	 *
-	 * @param array $tables The current checksum allowed tables.
-	 * @return array The modified checksum allowed tables.
+	 * @return bool
 	 */
-	public function add_order_stats_to_checksum( array $tables ): array {
-		if ( ! $this->can_site_sync_orders() ) {
-			return $tables;
-		}
-
-		global $wpdb;
-		$order_stats_checksum_table = array(
-			'wc_order_stats'          => array(
-				'table'                     => "{$wpdb->prefix}wc_order_stats",
-				'range_field'               => 'order_id',
-				'key_fields'                => array( 'order_id' ),
-				'checksum_fields'           => array( 'date_paid', 'date_completed', 'total_sales' ),
-				'checksum_text_fields'      => array( 'status' ),
-				'is_table_enabled_callback' => function () {
-					return false !== JetpackSyncModules::get_module( 'woocommerce_analytics' );
-				},
-			),
-			'wc_order_product_lookup' => array(
-				'table'                     => "{$wpdb->prefix}wc_order_product_lookup",
-				'range_field'               => 'order_id',
-				'key_fields'                => array( 'order_id', 'order_item_id' ),
-				'checksum_fields'           => array( 'product_id', 'variation_id', 'product_qty', 'product_net_revenue', 'date_created' ),
-				'is_table_enabled_callback' => function () {
-					return false !== JetpackSyncModules::get_module( 'woocommerce_analytics' );
-				},
-			),
-			'wc_order_coupon_lookup'  => array(
-				'table'                     => "{$wpdb->prefix}wc_order_coupon_lookup",
-				'range_field'               => 'order_id',
-				'key_fields'                => array( 'order_id', 'coupon_id' ),
-				'checksum_fields'           => array( 'discount_amount', 'date_created' ),
-				'is_table_enabled_callback' => function () {
-					return false !== JetpackSyncModules::get_module( 'woocommerce_analytics' );
-				},
-			),
-			'wc_order_tax_lookup'     => array(
-				'table'                     => "{$wpdb->prefix}wc_order_tax_lookup",
-				'range_field'               => 'order_id',
-				'key_fields'                => array( 'order_id', 'tax_rate_id' ),
-				'checksum_fields'           => array( 'order_tax', 'total_tax', 'shipping_tax', 'date_created' ),
-				'is_table_enabled_callback' => function () {
-					return false !== JetpackSyncModules::get_module( 'woocommerce_analytics' );
-				},
-			),
-		);
-		return array_merge( $tables, $order_stats_checksum_table );
+	protected function can_site_sync_orders(): bool {
+		return $this->is_order_attribution_enabled();
 	}
 
 	/**
-	 * Add WC Analytics post meta to Sync's post meta whitelist.
-	 * Any changes to these meta will by synced to WordPress.com.
+	 * Whether WooCommerce order attribution is enabled.
+	 *
+	 * @return bool
+	 */
+	private function is_order_attribution_enabled(): bool {
+		if ( ! class_exists( FeaturesUtil::class ) ) {
+			return false;
+		}
+
+		try {
+			$is_enabled = FeaturesUtil::feature_is_enabled( 'order_attribution' );
+
+			// Account for a feature-settings form submission before WooCommerce updates
+			// the value returned by feature_is_enabled().
+			// phpcs:disable WordPress.Security.NonceVerification.Recommended
+			if ( isset( $_GET['section'] ) && 'features' === $_GET['section'] ) {
+				// phpcs:disable WordPress.Security.NonceVerification.Missing
+				if ( isset( $_POST['woocommerce_feature_order_attribution_enabled'] ) ) {
+					$posted_order_attribution = wc_clean( sanitize_text_field( wp_unslash( $_POST['woocommerce_feature_order_attribution_enabled'] ) ) );
+					$is_enabled               = wc_string_to_bool( $posted_order_attribution );
+				} elseif ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] ) {
+					$is_enabled = false;
+				}
+				// phpcs:enable WordPress.Security.NonceVerification.Missing
+			}
+			// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+			return $is_enabled;
+		} catch ( \Exception $e ) {
+			return false;
+		}
+	}
+
+	/**
+	 * Add Bookings post meta to Sync's post meta whitelist.
+	 * Any changes to these meta will be synced to WordPress.com.
 	 *
 	 * @param array $whitelist Existing post meta whitelist.
 	 * @return array Updated post meta whitelist.
