@@ -13,6 +13,13 @@ use Automattic\Jetpack\Search\TestCase as Search_TestCase;
  * Unit tests for the Settings class.
  */
 class Settings_Test extends Search_TestCase {
+	use Toggles_Ai_Master;
+
+	public function tearDown(): void {
+		$this->remove_ai_master_filters();
+		parent::tearDown();
+	}
+
 	public static function setUpBeforeClass(): void {
 		parent::setUpBeforeClass();
 		// Instantiating Settings hooks settings_register onto admin_init and
@@ -28,6 +35,45 @@ class Settings_Test extends Search_TestCase {
 		$setting = $registered[ Options::OPTION_PREFIX . 'ai_answers_enabled' ];
 		$this->assertEquals( 'boolean', $setting['type'] );
 		$this->assertFalse( $setting['default'] );
+	}
+
+	public function test_ai_answers_setting_cannot_be_turned_on_while_the_ai_master_is_off() {
+		// Customberg writes this option straight through /wp/v2/settings, so the
+		// registered setting has to hold the gate on its own.
+		$this->turn_ai_master_off();
+
+		update_option( Options::OPTION_PREFIX . 'ai_answers_enabled', true );
+
+		$this->assertFalse( (bool) get_option( Options::OPTION_PREFIX . 'ai_answers_enabled', false ) );
+	}
+
+	public function test_ai_answers_setting_keeps_a_saved_choice_while_the_ai_master_is_off() {
+		// The AI feature-settings endpoint writes feature choices even while the
+		// master is off, and update_option() sanitizes before it reads the old
+		// value — so a coercing callback would overwrite the saved choice.
+		update_option( Options::OPTION_PREFIX . 'ai_answers_enabled', true );
+		$this->turn_ai_master_off();
+
+		update_option( Options::OPTION_PREFIX . 'ai_answers_enabled', true );
+
+		$this->assertTrue( (bool) get_option( Options::OPTION_PREFIX . 'ai_answers_enabled', false ) );
+	}
+
+	public function test_ai_answers_setting_can_still_be_turned_off_while_the_ai_master_is_off() {
+		update_option( Options::OPTION_PREFIX . 'ai_answers_enabled', true );
+		$this->turn_ai_master_off();
+
+		update_option( Options::OPTION_PREFIX . 'ai_answers_enabled', false );
+
+		$this->assertFalse( (bool) get_option( Options::OPTION_PREFIX . 'ai_answers_enabled', false ) );
+	}
+
+	public function test_ai_answers_setting_can_be_turned_on_while_the_ai_master_is_on() {
+		$this->turn_ai_master_on();
+
+		update_option( Options::OPTION_PREFIX . 'ai_answers_enabled', true );
+
+		$this->assertTrue( (bool) get_option( Options::OPTION_PREFIX . 'ai_answers_enabled', false ) );
 	}
 
 	public function test_settings_register_registers_result_format() {

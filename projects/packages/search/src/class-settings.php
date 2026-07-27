@@ -52,19 +52,21 @@ class Settings {
 			array( $setting_prefix . 'show_post_date', 'boolean', true ),
 			array( $setting_prefix . 'show_product_price', 'boolean', true ),
 			array( $setting_prefix . 'show_powered_by', 'boolean', true ),
-			array( $setting_prefix . 'ai_answers_enabled', 'boolean', false ),
+			array( $setting_prefix . 'ai_answers_enabled', 'boolean', false, array( AI_Answers::class, 'sanitize_enabled_setting' ) ),
 			array( $setting_prefix . 'suggestions_enabled', 'boolean', false ),
 		);
 		foreach ( $settings as $value ) {
-			register_setting(
-				'options',
-				$value[0],
-				array(
-					'default'      => $value[2],
-					'show_in_rest' => true,
-					'type'         => $value[1],
-				)
+			$args = array(
+				'default'      => $value[2],
+				'show_in_rest' => true,
+				'type'         => $value[1],
 			);
+			// Optional fourth element: a sanitize_callback, for settings that carry
+			// a gate of their own.
+			if ( isset( $value[3] ) ) {
+				$args['sanitize_callback'] = $value[3];
+			}
+			register_setting( 'options', $value[0], $args );
 		}
 	}
 }

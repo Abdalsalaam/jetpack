@@ -15,7 +15,7 @@ import ColorControl from './color-control';
 import ExcludedPostTypesControl from './excluded-post-types-control';
 import ThemeControl from './theme-control';
 
-const { isFreePlan = false } = window[ SERVER_OBJECT_NAME ];
+const { isFreePlan = false, aiMasterEnabled = true } = window[ SERVER_OBJECT_NAME ];
 
 /**
  * Customization/configuration tab for the sidebar.
@@ -212,12 +212,20 @@ export default function SidebarOptions() {
 					<ToggleControl
 						className="jp-search-configure-ai-answers-toggle"
 						checked={ aiAnswersEnabled }
-						disabled={ isDisabled }
+						disabled={ isDisabled || ! aiMasterEnabled }
 						label={ __( 'Enable AI Answers', 'jetpack-search-pkg' ) }
-						help={ __(
-							'Generate AI-powered answers to visitor queries using your site’s content.',
-							'jetpack-search-pkg'
-						) }
+						help={
+							aiMasterEnabled
+								? __(
+										'Generate AI-powered answers to visitor queries using your site’s content.',
+										'jetpack-search-pkg'
+								  )
+								: __(
+										'Jetpack AI is turned off for this site. Your setting will apply again when AI is turned back on.',
+										'jetpack-search-pkg',
+										/* dummy arg to avoid bad minification */ 0
+								  )
+						}
 						onChange={ setAiAnswersEnabled }
 						__nextHasNoMarginBottom={ true }
 					/>

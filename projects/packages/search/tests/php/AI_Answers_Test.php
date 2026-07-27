@@ -7,12 +7,15 @@
 
 namespace Automattic\Jetpack\Search;
 
+use Automattic\Jetpack\Constants;
 use Automattic\Jetpack\Search\TestCase as Search_TestCase;
 
 /**
  * Unit tests for the AI_Answers class.
  */
 class AI_Answers_Test extends Search_TestCase {
+	use Toggles_Ai_Master;
+
 	public static function setUpBeforeClass(): void {
 		parent::setUpBeforeClass();
 		( new AI_Answers() )->init();
@@ -36,6 +39,9 @@ class AI_Answers_Test extends Search_TestCase {
 
 		parent::tearDown();
 
+		$this->remove_ai_master_filters();
+		Constants::clear_single_constant( 'IS_WPCOM' );
+
 		if ( $this->posts_query_filter !== null ) {
 			remove_filter( 'posts_pre_query', $this->posts_query_filter, 10 );
 			$this->posts_query_filter = null;
@@ -58,6 +64,87 @@ class AI_Answers_Test extends Search_TestCase {
 	public function test_is_enabled_filter_overrides_option() {
 		add_filter( 'jetpack_search_ai_answers_enabled', '__return_true' );
 		$this->assertTrue( AI_Answers::is_enabled() );
+		remove_filter( 'jetpack_search_ai_answers_enabled', '__return_true' );
+	}
+
+	// -------------------------------------------------------------------------
+	// Tests for the site-wide Jetpack AI master switch
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Off Simple, the `ai` module is the master switch.
+	 */
+	public function test_is_master_enabled_is_true_when_the_ai_module_is_active() {
+		$this->turn_ai_master_on();
+
+		$this->assertTrue( AI_Answers::is_master_enabled() );
+	}
+
+	public function test_is_master_enabled_is_false_when_the_ai_module_is_inactive() {
+		$this->turn_ai_master_off();
+
+		$this->assertFalse( AI_Answers::is_master_enabled() );
+	}
+
+	public function test_is_master_enabled_is_true_when_the_ai_module_is_not_registered() {
+		// Standalone Jetpack Search plugin: no Jetpack plugin, so no `ai` module and
+		// no master switch to obey. Sites that never had one must not be gated.
+		$this->assertTrue( AI_Answers::is_master_enabled() );
+	}
+
+	/**
+	 * Turn the Simple master off.
+	 *
+	 * Stores the empty string rather than `false`, which is what WordPress
+	 * persists for a false option — and what WorDBless can round-trip, since it
+	 * returns the default for a stored `false`.
+	 */
+	private function disable_simple_master() {
+		update_option( AI_Answers::AI_MASTER_OPTION, '' );
+	}
+
+	public function test_is_master_enabled_reads_the_option_on_wpcom_simple() {
+		Constants::set_constant( 'IS_WPCOM', true );
+		$this->disable_simple_master();
+
+		$this->assertFalse( AI_Answers::is_master_enabled() );
+	}
+
+	public function test_is_master_enabled_defaults_to_true_on_wpcom_simple() {
+		Constants::set_constant( 'IS_WPCOM', true );
+
+		$this->assertTrue( AI_Answers::is_master_enabled() );
+	}
+
+	public function test_is_master_enabled_ignores_the_ai_module_on_wpcom_simple() {
+		// Modules never run on Simple, and Modules::is_active() answers true there
+		// unconditionally — the option stays the master.
+		Constants::set_constant( 'IS_WPCOM', true );
+		$this->turn_ai_master_on();
+		$this->disable_simple_master();
+
+		$this->assertFalse( AI_Answers::is_master_enabled() );
+	}
+
+	public function test_is_enabled_is_false_when_the_master_is_off() {
+		// Save the choice before the master goes off: once it is off, the setting's
+		// own sanitize callback refuses to turn it on, and this test would then
+		// pass for the wrong reason.
+		update_option( 'jetpack_search_ai_answers_enabled', true );
+		$this->turn_ai_master_off();
+
+		$this->assertTrue( AI_Answers::is_saved_on() );
+		$this->assertFalse( AI_Answers::is_enabled() );
+	}
+
+	public function test_is_enabled_master_gate_cannot_be_filtered_back_on() {
+		// The master gate is applied after the filter chain, so a filter cannot
+		// re-enable AI Answers while the site-wide switch is off.
+		$this->turn_ai_master_off();
+		add_filter( 'jetpack_search_ai_answers_enabled', '__return_true' );
+
+		$this->assertFalse( AI_Answers::is_enabled() );
+
 		remove_filter( 'jetpack_search_ai_answers_enabled', '__return_true' );
 	}
 
