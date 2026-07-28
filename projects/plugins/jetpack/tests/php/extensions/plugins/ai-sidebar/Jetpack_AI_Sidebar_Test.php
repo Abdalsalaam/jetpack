@@ -807,12 +807,14 @@ class Jetpack_AI_Sidebar_Test extends WP_UnitTestCase {
 		$this->assertSame( true, $data['jetpackAiSidebar']['features']['blockToolbarButton'] );
 		// A8C_PROXIED_REQUEST marks an internal testing environment, which is the same gate that
 		// emits this payload at all, so the in-development Generate Feedback, Optimize Title,
-		// Excerpt, and block toolbar button features are exposed here. SEO suggestions stay off
-		// because the seo-tools module and plan gate are not satisfied in this test.
+		// Excerpt, Draft Assist, and block toolbar button features are exposed here. SEO
+		// suggestions stay off because the seo-tools module and plan gate are not satisfied
+		// in this test.
 		$this->assertSame( true, $data['jetpackAiSidebar']['features']['generateFeedback'] );
 		$this->assertSame( true, $data['jetpackAiSidebar']['features']['optimizeTitleSuggestion'] );
 		$this->assertSame( false, $data['jetpackAiSidebar']['features']['seoSuggestions'] );
 		$this->assertSame( true, $data['jetpackAiSidebar']['features']['excerptSuggestion'] );
+		$this->assertSame( true, $data['jetpackAiSidebar']['features']['draftAssist'] );
 		$this->assertSame( false, $data['jetpackAiSidebar']['features']['chatHistory'] );
 		$this->assertSame( false, $data['jetpackAiSidebar']['features']['supportGuides'] );
 	}
@@ -834,8 +836,8 @@ class Jetpack_AI_Sidebar_Test extends WP_UnitTestCase {
 
 	/**
 	 * In an internal testing environment, the in-development suggestions (Generate
-	 * Feedback, Proofreader, Optimize Title, SEO suggestions and the excerpt
-	 * suggestion) are exposed. The test plan supports advanced-seo, and the
+	 * Feedback, Proofreader, Optimize Title, SEO suggestions, the excerpt suggestion
+	 * and Draft Assist) are exposed. The test plan supports advanced-seo, and the
 	 * seo-tools module is activated so the SEO suggestions gate is satisfied.
 	 */
 	public function test_add_agents_manager_data_exposes_in_development_features_in_testing_environment() {
@@ -850,6 +852,7 @@ class Jetpack_AI_Sidebar_Test extends WP_UnitTestCase {
 		$this->assertSame( true, $data['jetpackAiSidebar']['features']['optimizeTitleSuggestion'] );
 		$this->assertSame( true, $data['jetpackAiSidebar']['features']['seoSuggestions'] );
 		$this->assertSame( true, $data['jetpackAiSidebar']['features']['excerptSuggestion'] );
+		$this->assertSame( true, $data['jetpackAiSidebar']['features']['draftAssist'] );
 	}
 
 	/**
@@ -867,6 +870,7 @@ class Jetpack_AI_Sidebar_Test extends WP_UnitTestCase {
 				$features['optimizeTitleSuggestion'] = true;
 				$features['seoSuggestions']          = true;
 				$features['excerptSuggestion']       = true;
+				$features['draftAssist']             = true;
 				return $features;
 			}
 		);
@@ -880,6 +884,7 @@ class Jetpack_AI_Sidebar_Test extends WP_UnitTestCase {
 		$this->assertFalse( $data['jetpackAiSidebar']['features']['optimizeTitleSuggestion'] );
 		$this->assertFalse( $data['jetpackAiSidebar']['features']['seoSuggestions'] );
 		$this->assertFalse( $data['jetpackAiSidebar']['features']['excerptSuggestion'] );
+		$this->assertFalse( $data['jetpackAiSidebar']['features']['draftAssist'] );
 	}
 
 	/**
