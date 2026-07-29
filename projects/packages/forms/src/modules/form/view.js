@@ -11,7 +11,8 @@ import {
 /*
  * Internal dependencies
  */
-import { evaluateConditionalLogic } from '../../blocks/shared/util/conditional-logic.ts';
+import { resolveVisibility } from '../../blocks/shared/conditional-logic/util/evaluate.ts';
+import { getTypeKeyForFieldType } from '../../blocks/shared/conditional-logic/util/field-types.ts';
 import { validateField, isEmptyValue } from '../../contact-form/js/validate-helper.js';
 import { getRating } from '../field-rating/view.js';
 import { maybeAddColonToLabel, maybeTransformValue, getImages, getUrl } from './helpers.js';
@@ -28,6 +29,60 @@ const withSyncEvent =
 const NAMESPACE = 'jetpack/form';
 const config = getConfig( NAMESPACE );
 let errorTimeout = null;
+
+/**
+ * Memo for the last resolved visibility map.
+ *
+ * `isFieldHidden` is read once per field, but conditional logic cascades across the whole
+ * form, so the resolver has to consider every field on each call. Caching on a signature of
+ * the current values keeps a keystroke at one resolution rather than one per field.
+ */
+let visibilityMemo = { signature: null, map: null };
+
+/**
+ * Resolve visibility for every field in the form the current field belongs to.
+ *
+ * The form block emits `conditionalLogic` as `{ types, logic }`: a type for every field, so
+ * rules can reference any of them, plus logic for only the fields that have some. When no
+ * field uses conditional logic the key is absent and this returns null, so the getter can
+ * skip the work entirely.
+ *
+ * @param {object} context - The interactivity context, merged from form and field level.
+ * @return {object|null} Map of field id to visibility, or null when nothing is conditional.
+ */
+const resolveFormVisibility = context => {
+	const conditionalLogic = context.conditionalLogic;
+	const logicByField = conditionalLogic?.logic;
+
+	if ( ! logicByField || ! Object.keys( logicByField ).length ) {
+		return null;
+	}
+
+	const typesByField = conditionalLogic.types || {};
+	const fields = context.fields || {};
+	const values = {};
+	for ( const id in fields ) {
+		values[ id ] = fields[ id ]?.value;
+	}
+
+	const signature = JSON.stringify( values );
+	if ( visibilityMemo.signature === signature ) {
+		return visibilityMemo.map;
+	}
+
+	const descriptors = {};
+	for ( const id in typesByField ) {
+		descriptors[ id ] = {
+			logic: logicByField[ id ] || null,
+			type: getTypeKeyForFieldType( typesByField[ id ] ),
+		};
+	}
+
+	const map = resolveVisibility( descriptors, values );
+	visibilityMemo = { signature, map };
+
+	return map;
+};
 
 const updateField = ( fieldId, value, showFieldError = false, validatorCallback = null ) => {
 	const context = getContext();
@@ -452,19 +507,13 @@ const { state, actions } = store( NAMESPACE, {
 
 		get isFieldHidden() {
 			const context = getContext();
-			const logic = context.fieldConditionalLogic;
+			const visibility = resolveFormVisibility( context );
 
-			if ( ! logic || ! logic.enabled ) {
+			if ( ! visibility ) {
 				return false;
 			}
 
-			const fields = context.fields || {};
-			const values = {};
-			for ( const id in fields ) {
-				values[ id ] = fields[ id ]?.value;
-			}
-
-			return ! evaluateConditionalLogic( logic, values ).visible;
+			return false === visibility[ context.fieldId ];
 		},
 	},
 

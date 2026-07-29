@@ -13,7 +13,7 @@ import {
 import { useSelect } from '@wordpress/data';
 import { useCallback, useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import { OPERATORS } from '../../shared/util/conditional-logic.ts';
+import { OPERATORS } from '../../shared/conditional-logic/util/field-types.ts';
 
 const DEFAULT_LOGIC = {
 	enabled: false,

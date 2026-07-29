@@ -1,4 +1,9 @@
-import { __ } from '@wordpress/i18n';
+/*
+ * Kept free of `@wordpress/i18n` on purpose: this module is imported by the front-end
+ * form runtime, which builds as a WordPress script module, and script modules cannot
+ * import that package yet. Translated operator labels live in ./operator-labels.ts,
+ * which only the editor loads.
+ */
 
 /**
  * Operator wire strings shared with the PHP evaluator.
@@ -85,6 +90,39 @@ export const TYPE_KEY_BY_BLOCK_NAME: Record< string, TypeKey > = {
 	'jetpack/field-file': 'file',
 };
 
+/**
+ * Front-end and submission-side lookup: shortcode `type` to comparison behavior.
+ *
+ * Fields flatten to `[contact-field type="…"]` before rendering, so the browser runtime and
+ * PHP see these strings rather than block names. Mirrored by
+ * `Conditional_Logic::TYPE_KEY_BY_FIELD_TYPE`.
+ *
+ * `field-telephone` emits `telephone` or `phone` depending on its country-selector setting,
+ * so both appear here.
+ */
+export const TYPE_KEY_BY_FIELD_TYPE: Record< string, TypeKey > = {
+	text: 'string',
+	name: 'string',
+	email: 'string',
+	url: 'string',
+	textarea: 'string',
+	telephone: 'string',
+	phone: 'string',
+	select: 'choice',
+	radio: 'choice',
+	'image-select': 'choice',
+	'checkbox-multiple': 'multichoice',
+	number: 'number',
+	slider: 'number',
+	rating: 'number',
+	date: 'date',
+	time: 'time',
+	checkbox: 'boolean',
+	consent: 'boolean',
+	hidden: 'hidden',
+	file: 'file',
+};
+
 const OPERATORS_BY_TYPE_KEY: Record< TypeKey, Operator[] > = {
 	string: [
 		OPERATORS.IS,
@@ -131,28 +169,6 @@ const VALUE_INPUT_BY_TYPE_KEY: Record< TypeKey, ValueInputKind > = {
 };
 
 /**
- * Human-readable operator labels for the rule builder.
- */
-export const OPERATOR_LABELS: Record< Operator, string > = {
-	[ OPERATORS.IS ]: __( 'is', 'jetpack-forms' ),
-	[ OPERATORS.IS_NOT ]: __( 'is not', 'jetpack-forms' ),
-	[ OPERATORS.CONTAINS ]: __( 'contains', 'jetpack-forms' ),
-	[ OPERATORS.DOES_NOT_CONTAIN ]: __( 'does not contain', 'jetpack-forms' ),
-	[ OPERATORS.IS_EMPTY ]: __( 'is empty', 'jetpack-forms' ),
-	[ OPERATORS.IS_NOT_EMPTY ]: __( 'is not empty', 'jetpack-forms' ),
-	[ OPERATORS.EQUALS ]: __( 'equals', 'jetpack-forms' ),
-	[ OPERATORS.NOT_EQUALS ]: __( 'does not equal', 'jetpack-forms' ),
-	[ OPERATORS.GREATER_THAN ]: __( 'is greater than', 'jetpack-forms' ),
-	[ OPERATORS.LESS_THAN ]: __( 'is less than', 'jetpack-forms' ),
-	[ OPERATORS.GTE ]: __( 'is at least', 'jetpack-forms' ),
-	[ OPERATORS.LTE ]: __( 'is at most', 'jetpack-forms' ),
-	[ OPERATORS.BEFORE ]: __( 'is before', 'jetpack-forms' ),
-	[ OPERATORS.AFTER ]: __( 'is after', 'jetpack-forms' ),
-	[ OPERATORS.IS_CHECKED ]: __( 'is checked', 'jetpack-forms' ),
-	[ OPERATORS.IS_NOT_CHECKED ]: __( 'is not checked', 'jetpack-forms' ),
-};
-
-/**
  * Resolve a block name to its comparison behavior.
  *
  * @param blockName - Fully qualified block name, e.g. `jetpack/field-select`.
@@ -163,6 +179,19 @@ export const getTypeKeyForBlockName = ( blockName?: string ): TypeKey | null => 
 		return null;
 	}
 	return TYPE_KEY_BY_BLOCK_NAME[ blockName ] ?? null;
+};
+
+/**
+ * Resolve a shortcode field type to its comparison behavior.
+ *
+ * @param fieldType - The shortcode `type` attribute, e.g. `checkbox-multiple`.
+ * @return The type key; unknown types compare textually rather than being dropped.
+ */
+export const getTypeKeyForFieldType = ( fieldType?: string ): TypeKey => {
+	if ( ! fieldType ) {
+		return 'string';
+	}
+	return TYPE_KEY_BY_FIELD_TYPE[ fieldType ] ?? 'string';
 };
 
 /**
