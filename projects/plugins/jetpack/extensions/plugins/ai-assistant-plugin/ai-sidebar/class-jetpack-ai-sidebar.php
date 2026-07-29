@@ -513,7 +513,7 @@ class Jetpack_AI_Sidebar {
 			'aiEditorialReview'       => self::is_ai_editorial_review_enabled(),
 			'generateFeedback'        => self::is_generate_feedback_enabled(),
 			'proofreadContent'        => self::is_proofread_content_enabled(),
-			'blockTransformations'    => true,
+			'blockTransformations'    => \Jetpack_AI_Settings::is_feature_enabled( 'writing_assistant' ),
 			'blockToolbarButton'      => self::is_block_toolbar_button_enabled(),
 			'optimizeTitleSuggestion' => self::is_optimize_title_suggestion_enabled(),
 			'seoSuggestions'          => self::is_seo_suggestions_enabled(),
@@ -538,6 +538,11 @@ class Jetpack_AI_Sidebar {
 		$features['blockToolbarButton']      = (bool) $features['blockToolbarButton'] && self::is_block_toolbar_button_enabled();
 		$features['seoSuggestions']          = (bool) $features['seoSuggestions'] && self::is_seo_suggestions_enabled();
 		$features['excerptSuggestion']       = (bool) $features['excerptSuggestion'] && self::is_excerpt_suggestion_enabled();
+		// Block transformations (Translate, Change Tone, etc.) are writing features
+		// and follow the writing assistant toggle.
+		$features['blockTransformations'] = (bool) $features['blockTransformations'] && \Jetpack_AI_Settings::is_feature_enabled( 'writing_assistant' );
+		// AI Editorial Review is writing-gated like its siblings above.
+		$features['aiEditorialReview'] = (bool) $features['aiEditorialReview'] && self::is_ai_editorial_review_enabled();
 
 		return array(
 			'enabled'  => self::is_jetpack_ai_sidebar_preview_enabled(),
