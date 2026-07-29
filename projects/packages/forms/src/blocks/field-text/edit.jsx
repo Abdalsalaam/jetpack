@@ -1,7 +1,7 @@
 import { __ } from '@wordpress/i18n';
 import JetpackField from '../shared/components/jetpack-field.jsx';
 import useFormWrapper from '../shared/hooks/use-form-wrapper.js';
-import ConditionalLogicPanel from './components/conditional-logic-panel.js';
+import ConditionalLogicPanel from './components/conditional-logic-panel.jsx';
 
 /**
  * Editor component for the jetpack/field-text block.
