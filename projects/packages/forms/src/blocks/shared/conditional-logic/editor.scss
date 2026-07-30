@@ -23,8 +23,16 @@
 	.jetpack-contact-form__conditional-logic-summary {
 		display: flex;
 		flex-direction: row;
-		align-items: center;
+		align-items: flex-start;
 		gap: 8px;
+
+		// BaseControl still applies a bottom margin here even
+		// with __nextHasNoMarginBottom, which pushed the two
+		// selectors out of line with each other.
+		.components-base-control,
+		.components-base-control__field {
+			margin-block-end: 0;
+		}
 
 		// Show/hide carries the longer label, so give it the
 		// extra room instead of splitting the row evenly.
