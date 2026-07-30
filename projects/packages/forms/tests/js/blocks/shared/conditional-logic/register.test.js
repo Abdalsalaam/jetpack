@@ -1,9 +1,14 @@
-import { hasFilter } from '@wordpress/hooks';
-import {
-	FILTER_NAMESPACE,
-	isConditionalLogicField,
-	registerConditionalLogicFilter,
-} from '../../../../../src/blocks/shared/conditional-logic/register.jsx';
+import { jest } from '@jest/globals';
+import { hasFilter, removeFilter } from '@wordpress/hooks';
+
+const mockHasFeatureFlag = jest.fn( () => true );
+
+await jest.unstable_mockModule( '@automattic/jetpack-shared-extension-utils', () => ( {
+	hasFeatureFlag: ( ...args ) => mockHasFeatureFlag( ...args ),
+} ) );
+
+const { FEATURE_FLAG, FILTER_NAMESPACE, isConditionalLogicField, registerConditionalLogicFilter } =
+	await import( '../../../../../src/blocks/shared/conditional-logic/register.jsx' );
 
 // Every field block in the package. If a new jetpack/field-* block is added without a type
 // mapping, this list and field-types.ts disagree and the mapping test fails first.
@@ -71,16 +76,38 @@ describe( 'conditional logic registration', () => {
 	// addFilter does not de-duplicate by namespace, so an unguarded registration wrapped
 	// BlockEdit twice and rendered the panel twice.
 	describe( 'filter registration', () => {
-		it( 'registers the BlockEdit filter', () => {
+		afterEach( () => {
+			removeFilter( 'editor.BlockEdit', FILTER_NAMESPACE );
+			mockHasFeatureFlag.mockReturnValue( true );
+		} );
+
+		it( 'registers the BlockEdit filter when the feature flag is on', () => {
+			removeFilter( 'editor.BlockEdit', FILTER_NAMESPACE );
+
+			expect( registerConditionalLogicFilter() ).toBe( true );
+			expect( hasFilter( 'editor.BlockEdit', FILTER_NAMESPACE ) ).toBeTruthy();
+			expect( mockHasFeatureFlag ).toHaveBeenCalledWith( FEATURE_FLAG );
+		} );
+
+		// Regression: this module ships in both dist/blocks/editor.js and
+		// dist/form-editor/jetpack-form-editor.js, and the Forms editor screen loads both.
+		// addFilter does not de-duplicate by namespace, so an unguarded registration wrapped
+		// BlockEdit twice and rendered the panel twice.
+		it( 'declines to register a second time', () => {
+			removeFilter( 'editor.BlockEdit', FILTER_NAMESPACE );
+
+			expect( registerConditionalLogicFilter() ).toBe( true );
+			expect( registerConditionalLogicFilter() ).toBe( false );
+			expect( registerConditionalLogicFilter() ).toBe( false );
 			expect( hasFilter( 'editor.BlockEdit', FILTER_NAMESPACE ) ).toBeTruthy();
 		} );
 
-		it( 'declines to register a second time', () => {
-			// Importing the module already registered it; a second bundle calling in must be
-			// a no-op rather than adding another wrapper.
+		it( 'does not register at all when the feature flag is off', () => {
+			removeFilter( 'editor.BlockEdit', FILTER_NAMESPACE );
+			mockHasFeatureFlag.mockReturnValue( false );
+
 			expect( registerConditionalLogicFilter() ).toBe( false );
-			expect( registerConditionalLogicFilter() ).toBe( false );
-			expect( hasFilter( 'editor.BlockEdit', FILTER_NAMESPACE ) ).toBeTruthy();
+			expect( hasFilter( 'editor.BlockEdit', FILTER_NAMESPACE ) ).toBeFalsy();
 		} );
 	} );
 } );

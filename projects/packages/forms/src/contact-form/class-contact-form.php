@@ -9,6 +9,7 @@ namespace Automattic\Jetpack\Forms\ContactForm;
 
 use Automattic\Jetpack\Connection\Tokens;
 use Automattic\Jetpack\Forms\Dashboard\Dashboard as Forms_Dashboard;
+use Automattic\Jetpack\Forms\Jetpack_Forms;
 use Automattic\Jetpack\JWT;
 use Automattic\Jetpack\Sync\Settings;
 use PHPMailer\PHPMailer\PHPMailer;
@@ -3804,6 +3805,10 @@ class Contact_Form extends Contact_Form_Shortcode {
 	 * @return array Either an empty array or `array( 'types' => ..., 'logic' => ... )`.
 	 */
 	public function get_conditional_logic_context() {
+		if ( ! Jetpack_Forms::is_conditional_logic_enabled() ) {
+			return array();
+		}
+
 		$types = array();
 		$logic = array();
 
@@ -3836,6 +3841,15 @@ class Contact_Form extends Contact_Form_Shortcode {
 	 */
 	public function get_resolved_field_visibility() {
 		if ( null !== $this->resolved_field_visibility ) {
+			return $this->resolved_field_visibility;
+		}
+
+		// With the feature off every field is visible, so validation and storage behave
+		// exactly as they did before conditional logic existed. This is the single choke
+		// point for the runtime: callers do not need their own flag checks.
+		if ( ! Jetpack_Forms::is_conditional_logic_enabled() ) {
+			$this->resolved_field_visibility = array();
+
 			return $this->resolved_field_visibility;
 		}
 

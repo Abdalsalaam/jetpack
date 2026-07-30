@@ -130,6 +130,29 @@ class Jetpack_Forms {
 	}
 
 	/**
+	 * Returns true if field conditional logic is enabled.
+	 *
+	 * One switch for the whole feature: the editor panel, the front-end show/hide, and the
+	 * submission-time enforcement in validation and storage. Gating them together means a
+	 * form can never hide a field from the visitor while still requiring it on submit.
+	 *
+	 * Turning the flag off on a form that already has conditions is safe: the conditions are
+	 * simply ignored, so every field renders, validates and stores as an ordinary field.
+	 *
+	 * @return boolean
+	 */
+	public static function is_conditional_logic_enabled() {
+		/**
+		 * Whether to enable conditional logic on Jetpack form fields.
+		 *
+		 * @since $$next-version$$
+		 *
+		 * @param bool false Whether conditional logic should be enabled. Default false.
+		 */
+		return apply_filters( 'jetpack_forms_conditional_logic_enable', false );
+	}
+
+	/**
 	 * Returns true if webhooks are enabled.
 	 *
 	 * @return boolean

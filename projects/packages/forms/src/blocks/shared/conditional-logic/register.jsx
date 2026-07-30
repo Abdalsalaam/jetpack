@@ -1,3 +1,4 @@
+import { hasFeatureFlag } from '@automattic/jetpack-shared-extension-utils';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { addFilter, hasFilter } from '@wordpress/hooks';
 import ConditionalLogicPanel from './components/panel.jsx';
@@ -6,6 +7,8 @@ import { getTypeKeyForBlockName } from './util/field-types.ts';
 const FIELD_BLOCK_PREFIX = 'jetpack/field-';
 
 export const FILTER_NAMESPACE = 'jetpack/forms-conditional-logic';
+
+export const FEATURE_FLAG = 'form-conditional-logic';
 
 /**
  * Whether a block should carry the conditional-logic panel.
@@ -61,6 +64,12 @@ export const withConditionalLogic = createHigherOrderComponent(
  * @return {boolean} True when this call registered the filter, false when it was already there.
  */
 export const registerConditionalLogicFilter = () => {
+	// Off by default while the feature is in testing. The same switch gates the PHP runtime,
+	// so the editor can never offer conditions the front end would ignore.
+	if ( ! hasFeatureFlag( FEATURE_FLAG ) ) {
+		return false;
+	}
+
 	if ( hasFilter( 'editor.BlockEdit', FILTER_NAMESPACE ) ) {
 		return false;
 	}

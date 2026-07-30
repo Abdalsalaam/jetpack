@@ -16,7 +16,15 @@ use WorDBless\BaseTestCase;
 #[CoversClass( Contact_Form::class )]
 class Conditional_Logic_Validation_Test extends BaseTestCase {
 
+	protected function set_up() {
+		parent::set_up();
+		// Conditional logic is behind a flag while it is being tested; these cover the
+		// behaviour with the feature switched on.
+		add_filter( 'jetpack_forms_conditional_logic_enable', '__return_true' );
+	}
+
 	protected function tear_down() {
+		remove_filter( 'jetpack_forms_conditional_logic_enable', '__return_true' );
 		parent::tear_down();
 		unset( $_POST );
 	}

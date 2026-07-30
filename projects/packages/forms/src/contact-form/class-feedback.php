@@ -10,6 +10,7 @@ namespace Automattic\Jetpack\Forms\ContactForm;
 use Automattic\Jetpack\Connection\Client;
 use Automattic\Jetpack\Device_Detection\User_Agent_Info;
 use Automattic\Jetpack\Forms\Dashboard\Dashboard as Forms_Dashboard;
+use Automattic\Jetpack\Forms\Jetpack_Forms;
 use WP_Post;
 /**
  * Handles the response for a contact form submission.
@@ -2168,14 +2169,17 @@ class Feedback {
 		// cascades, so a field hidden by its own rule has to read as empty for everyone
 		// else's rules; evaluating field by field would let a stale value keep a downstream
 		// field alive.
-		$descriptors = array();
-		foreach ( $renderable as $field_id => $entry ) {
-			$descriptors[ $field_id ] = array(
-				'logic' => $entry['field']->get_attribute( 'conditionallogic' ),
-				'type'  => $entry['type'],
-			);
+		$visibility = array();
+		if ( Jetpack_Forms::is_conditional_logic_enabled() ) {
+			$descriptors = array();
+			foreach ( $renderable as $field_id => $entry ) {
+				$descriptors[ $field_id ] = array(
+					'logic' => $entry['field']->get_attribute( 'conditionallogic' ),
+					'type'  => $entry['type'],
+				);
+			}
+			$visibility = Conditional_Logic::resolve_visibility( $descriptors, $form_values );
 		}
-		$visibility = Conditional_Logic::resolve_visibility( $descriptors, $form_values );
 
 		$i = 1;
 		foreach ( $renderable as $field_id => $entry ) {
