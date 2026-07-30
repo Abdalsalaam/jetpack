@@ -17,14 +17,33 @@
 		line-height: 1.5;
 	}
 
-	// Action and match selectors: stacked and individually
-	// labelled, rather than inlined into a sentence that
-	// wraps unpredictably at sidebar widths.
+	// Both selectors on one row, with the sentence they belong
+	// to underneath rather than interleaved: text fragments
+	// either side of a control wrap badly at sidebar widths.
 	.jetpack-contact-form__conditional-logic-summary {
 		display: flex;
-		flex-direction: column;
-		gap: 12px;
-		margin-block-end: 20px;
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+
+		// Show/hide carries the longer label, so give it the
+		// extra room instead of splitting the row evenly.
+		> *:first-child {
+			flex: 3 1 0;
+			min-width: 0;
+		}
+
+		> *:last-child {
+			flex: 2 1 0;
+			min-width: 0;
+		}
+	}
+
+	.jetpack-contact-form__conditional-logic-hint {
+		margin-block: 8px 16px;
+		color: #757575;
+		font-size: 12px;
+		line-height: 1.5;
 	}
 
 	.jetpack-contact-form__conditional-logic-control {

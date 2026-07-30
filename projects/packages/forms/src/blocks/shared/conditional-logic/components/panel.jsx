@@ -13,8 +13,8 @@ const ACTION_OPTIONS = [
 ];
 
 const MATCH_OPTIONS = [
-	{ value: 'any', label: __( 'any condition matches', 'jetpack-forms' ) },
-	{ value: 'all', label: __( 'all conditions match', 'jetpack-forms' ) },
+	{ value: 'any', label: __( 'if any', 'jetpack-forms' ) },
+	{ value: 'all', label: __( 'if all', 'jetpack-forms' ) },
 ];
 
 /**
@@ -88,24 +88,31 @@ const ConditionalLogicPanel = ( { clientId, attributes, setAttributes } ) => {
 				className="jetpack-contact-form__panel jetpack-contact-form__conditional-logic"
 			>
 				{ hasConditions ? (
-					<div className="jetpack-contact-form__conditional-logic-summary">
-						<SelectControl
-							label={ __( 'Action', 'jetpack-forms' ) }
-							value={ logic.action }
-							options={ ACTION_OPTIONS }
-							onChange={ handleActionChange }
-							__nextHasNoMarginBottom={ true }
-							__next40pxDefaultSize={ true }
-						/>
-						<SelectControl
-							label={ __( 'When', 'jetpack-forms' ) }
-							value={ logic.logicalOperator }
-							options={ MATCH_OPTIONS }
-							onChange={ handleMatchChange }
-							__nextHasNoMarginBottom={ true }
-							__next40pxDefaultSize={ true }
-						/>
-					</div>
+					<>
+						<div className="jetpack-contact-form__conditional-logic-summary">
+							<SelectControl
+								label={ __( 'Action', 'jetpack-forms' ) }
+								hideLabelFromVision
+								value={ logic.action }
+								options={ ACTION_OPTIONS }
+								onChange={ handleActionChange }
+								__nextHasNoMarginBottom={ true }
+								__next40pxDefaultSize={ true }
+							/>
+							<SelectControl
+								label={ __( 'When', 'jetpack-forms' ) }
+								hideLabelFromVision
+								value={ logic.logicalOperator }
+								options={ MATCH_OPTIONS }
+								onChange={ handleMatchChange }
+								__nextHasNoMarginBottom={ true }
+								__next40pxDefaultSize={ true }
+							/>
+						</div>
+						<p className="jetpack-contact-form__conditional-logic-hint">
+							{ __( 'of the following conditions are met:', 'jetpack-forms' ) }
+						</p>
+					</>
 				) : (
 					<p className="jetpack-contact-form__conditional-logic-intro">
 						{ __(

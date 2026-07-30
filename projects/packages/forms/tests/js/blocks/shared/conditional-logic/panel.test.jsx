@@ -156,6 +156,30 @@ describe( 'ConditionalLogicPanel', () => {
 		expect( screen.getByLabelText( 'When' ) ).toBeInTheDocument();
 	} );
 
+	// The single-row arrangement itself is CSS; what this can verify is that both selectors
+	// render together and that the sentence they belong to follows them rather than being
+	// interleaved, which is what wrapped badly before.
+	it( 'renders both selectors above the conditions sentence', async () => {
+		const { container } = await setup(
+			withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ] )
+		);
+
+		expect( screen.getByLabelText( 'Action' ) ).toBeInTheDocument();
+		expect( screen.getByLabelText( 'When' ) ).toBeInTheDocument();
+		expect(
+			within( container ).getByText( 'of the following conditions are met:' )
+		).toBeInTheDocument();
+	} );
+
+	it( 'phrases the match options to read on from the action', async () => {
+		await setup( withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ] ) );
+
+		const match = screen.getByLabelText( 'When' );
+		expect( optionValues( match ) ).toEqual( [ 'any', 'all' ] );
+		expect( within( match ).getByRole( 'option', { name: 'if any' } ) ).toBeInTheDocument();
+		expect( within( match ).getByRole( 'option', { name: 'if all' } ) ).toBeInTheDocument();
+	} );
+
 	it( 'offers the operators belonging to the subject field type', async () => {
 		await setup( withRules( [ { field: 'budget_1', operator: 'greater_than', value: '10' } ] ) );
 
