@@ -156,6 +156,15 @@ class Contact_Form extends Contact_Form_Shortcode {
 	private $source;
 
 	/**
+	 * Cached map of field id to conditional-logic visibility for this submission.
+	 *
+	 * Null until resolved. Shared by validation and storage so the two cannot disagree.
+	 *
+	 * @var array|null
+	 */
+	private $resolved_field_visibility = null;
+
+	/**
 	 * The reference ID for the contact form.
 	 *
 	 * @var int|null
@@ -1497,6 +1506,7 @@ class Contact_Form extends Contact_Form_Shortcode {
 			'elementId'               => $element_id,
 			'isSingleInputForm'       => $is_single_input_form,
 			'isForcedHorizontal'      => $is_forced_horizontal,
+			'conditionalLogic'        => $form->get_conditional_logic_context(),
 		);
 
 		if ( $is_multistep ) {
@@ -2571,6 +2581,12 @@ class Contact_Form extends Contact_Form_Shortcode {
 			isset( $_POST['contact-form-hash'] ) && is_string( $_POST['contact-form-hash'] ) && hash_equals( $form->hash, wp_unslash( $_POST['contact-form-hash'] ) )
 		) { // phpcs:enable
 			// If we're processing a POST submission for this contact form, validate the field value so we can show errors as necessary.
+			//
+			// Conditional logic is deliberately not consulted here. Fields are appended to
+			// $form->fields as they parse, so a visibility resolution at this point would run
+			// against an incomplete form and cache the wrong answer for validate() later. This
+			// call only decorates the rendered field with an error; whether the submission is
+			// accepted is decided by Contact_Form::validate(), which does skip hidden fields.
 			$field->validate();
 		}
 
@@ -3747,8 +3763,17 @@ class Contact_Form extends Contact_Form_Shortcode {
 	 */
 	public function validate() {
 		$has_value = false;
+		// A field hidden by conditional logic was never shown to the visitor, so validating it
+		// would block submission on an error they cannot see or clear — most visibly when the
+		// hidden field is also required.
+		$visibility = $this->get_resolved_field_visibility();
+
 		// Validate the form fields before processing the form.
-		foreach ( $this->fields as $field ) {
+		foreach ( $this->fields as $field_id => $field ) {
+			if ( isset( $visibility[ $field_id ] ) && false === $visibility[ $field_id ] ) {
+				continue;
+			}
+
 			$field->validate();
 			if ( ! $has_value && $field->has_value() ) {
 				$has_value = true;
@@ -3763,6 +3788,84 @@ class Contact_Form extends Contact_Form_Shortcode {
 		if ( ! empty( $ref_id ) ) {
 			$this->validate_ref( $ref_id );
 		}
+	}
+
+	/**
+	 * Build the form-level conditional-logic context handed to the front end.
+	 *
+	 * Two maps rather than one: `types` covers every field, because any of them may be the
+	 * subject of a rule, while `logic` covers only the few that carry conditions. Emitting
+	 * types solely for fields that have logic would leave the evaluator unable to resolve the
+	 * subject of most rules, and it ignores rules whose subject it cannot type.
+	 *
+	 * Returns an empty array when no field uses conditional logic, so the common case adds
+	 * nothing to the page.
+	 *
+	 * @return array Either an empty array or `array( 'types' => ..., 'logic' => ... )`.
+	 */
+	public function get_conditional_logic_context() {
+		$types = array();
+		$logic = array();
+
+		foreach ( $this->fields as $field_id => $field ) {
+			$types[ $field_id ] = $field->get_attribute( 'type' );
+
+			$field_logic = $field->get_attribute( 'conditionallogic' );
+			if ( is_array( $field_logic ) && ! empty( $field_logic['enabled'] ) ) {
+				$logic[ $field_id ] = $field_logic;
+			}
+		}
+
+		if ( empty( $logic ) ) {
+			return array();
+		}
+
+		return array(
+			'types' => $types,
+			'logic' => $logic,
+		);
+	}
+
+	/**
+	 * Resolve which fields are visible for the current submission.
+	 *
+	 * Computed once and cached: validation and storage both consult it, and letting them
+	 * resolve separately would risk them disagreeing about whether a field was shown.
+	 *
+	 * @return array Map of field id to bool visibility.
+	 */
+	public function get_resolved_field_visibility() {
+		if ( null !== $this->resolved_field_visibility ) {
+			return $this->resolved_field_visibility;
+		}
+
+		$descriptors = array();
+		$values      = array();
+
+		foreach ( $this->fields as $field_id => $field ) {
+			$descriptors[ $field_id ] = array(
+				'logic' => $field->get_attribute( 'conditionallogic' ),
+				'type'  => $field->get_attribute( 'type' ),
+			);
+
+			// Read the submitted value the same way Contact_Form_Field::validate() does.
+			// Resolving against $field->value instead would evaluate every rule against an
+			// empty form, because the property is not populated from the request.
+			$post_key = $field->get_attribute( 'id' );
+			if ( isset( $_POST[ $post_key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- read-only; nonce verification happens in the caller.
+				if ( is_array( $_POST[ $post_key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- read-only; nonce verification happens in the caller.
+					$values[ $field_id ] = array_map( 'sanitize_text_field', wp_unslash( $_POST[ $post_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- read-only; nonce verification happens in the caller.
+				} else {
+					$values[ $field_id ] = sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- read-only; nonce verification happens in the caller.
+				}
+			} else {
+				$values[ $field_id ] = $field->value;
+			}
+		}
+
+		$this->resolved_field_visibility = Conditional_Logic::resolve_visibility( $descriptors, $values );
+
+		return $this->resolved_field_visibility;
 	}
 
 	/**

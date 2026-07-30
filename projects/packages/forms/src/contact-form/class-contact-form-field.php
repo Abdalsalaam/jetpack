@@ -2770,11 +2770,9 @@ class Contact_Form_Field extends Contact_Form_Shortcode {
 			'formHash'          => $this->form->hash,
 		);
 
-		$conditional_logic = $this->get_attribute( 'conditionallogic' );
-		if ( is_array( $conditional_logic ) && ! empty( $conditional_logic['enabled'] ) ) {
-			$context['fieldConditionalLogic'] = $conditional_logic;
-		}
-
+		// Conditional logic is not emitted per field: it cascades, so resolving it needs every
+		// field's logic and type at once. The form block emits that map once as
+		// `conditionalLogic`, and this field's wrapper reads its own entry from there.
 		$interactivity_attrs = ' data-wp-interactive="jetpack/form" ' . wp_interactivity_data_wp_context( $context ) . ' ';
 
 		// Fields with an inset label need an extra wrapper to show the error message below the input.
