@@ -47,28 +47,6 @@ class Conditional_Logic_Parity_Test extends TestCase {
 	}
 
 	/**
-	 * Extract the string literal values of an object literal in the TS source.
-	 *
-	 * @param string $source     The TypeScript source.
-	 * @param string $identifier The exported const name.
-	 *
-	 * @return array Ordered list of the object's string values.
-	 */
-	private function extract_object_values( string $source, string $identifier ): array {
-		$matched = preg_match(
-			'/export const ' . preg_quote( $identifier, '/' ) . '[^=]*= \{(.*?)\n\};?/s',
-			$source,
-			$block
-		);
-		$this->assertSame( 1, $matched, "Could not locate {$identifier} in field-types.ts." );
-
-		preg_match_all( "/:\s*'([a-z_-]+)'/", $block[1], $matches );
-		$this->assertNotEmpty( $matches[1], "No string values found in {$identifier}." );
-
-		return $matches[1];
-	}
-
-	/**
 	 * The PHP operator constants must match the TypeScript OPERATORS values exactly.
 	 *
 	 * Operator strings are persisted in post content, so a rename on one side silently stops
