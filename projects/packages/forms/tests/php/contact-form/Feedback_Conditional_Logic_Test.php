@@ -79,11 +79,15 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 				'enabled'         => true,
 				'action'          => 'show',
 				'logicalOperator' => 'any',
-				'rules'           => array(
-					array(
-						'field'    => 'trigger',
-						'operator' => 'is',
-						'value'    => 'yes',
+				'controls'        => array(
+					'fieldValue' => array(
+						'rules' => array(
+							array(
+								'field'    => 'trigger',
+								'operator' => 'is',
+								'value'    => 'yes',
+							),
+						),
 					),
 				),
 			)
@@ -112,11 +116,15 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 				'enabled'         => true,
 				'action'          => 'show',
 				'logicalOperator' => 'any',
-				'rules'           => array(
-					array(
-						'field'    => 'trigger',
-						'operator' => 'is',
-						'value'    => 'yes',
+				'controls'        => array(
+					'fieldValue' => array(
+						'rules' => array(
+							array(
+								'field'    => 'trigger',
+								'operator' => 'is',
+								'value'    => 'yes',
+							),
+						),
 					),
 				),
 			)
@@ -140,11 +148,15 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 				'enabled'         => false,
 				'action'          => 'show',
 				'logicalOperator' => 'any',
-				'rules'           => array(
-					array(
-						'field'    => 'trigger',
-						'operator' => 'is',
-						'value'    => 'yes',
+				'controls'        => array(
+					'fieldValue' => array(
+						'rules' => array(
+							array(
+								'field'    => 'trigger',
+								'operator' => 'is',
+								'value'    => 'yes',
+							),
+						),
 					),
 				),
 			)
@@ -168,11 +180,15 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 				'enabled'         => true,
 				'action'          => 'hide',
 				'logicalOperator' => 'any',
-				'rules'           => array(
-					array(
-						'field'    => 'trigger',
-						'operator' => 'is',
-						'value'    => 'secret',
+				'controls'        => array(
+					'fieldValue' => array(
+						'rules' => array(
+							array(
+								'field'    => 'trigger',
+								'operator' => 'is',
+								'value'    => 'secret',
+							),
+						),
 					),
 				),
 			)

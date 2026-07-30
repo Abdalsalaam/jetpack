@@ -2164,14 +2164,26 @@ class Feedback {
 			);
 		}
 
+		// Resolve visibility for every renderable field in one pass. Conditional logic
+		// cascades, so a field hidden by its own rule has to read as empty for everyone
+		// else's rules; evaluating field by field would let a stale value keep a downstream
+		// field alive.
+		$descriptors = array();
+		foreach ( $renderable as $field_id => $entry ) {
+			$descriptors[ $field_id ] = array(
+				'logic' => $entry['field']->get_attribute( 'conditionallogic' ),
+				'type'  => $entry['type'],
+			);
+		}
+		$visibility = Conditional_Logic::resolve_visibility( $descriptors, $form_values );
+
 		$i = 1;
 		foreach ( $renderable as $field_id => $entry ) {
 			$field = $entry['field'];
 			$type  = $entry['type'];
 			$value = $entry['value'];
 
-			$logic = $field->get_attribute( 'conditionallogic' );
-			if ( is_array( $logic ) && ! empty( $logic['enabled'] ) && ! Conditional_Logic::evaluate( $logic, $form_values ) ) {
+			if ( isset( $visibility[ $field_id ] ) && false === $visibility[ $field_id ] ) {
 				continue;
 			}
 
