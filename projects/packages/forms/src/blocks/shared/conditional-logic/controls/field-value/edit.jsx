@@ -9,6 +9,7 @@ import {
 } from '@wordpress/components';
 import { useCallback, useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
+import { useEnsureFieldId } from '../../hooks/use-subject-fields.js';
 import {
 	OPERATORS,
 	getOperatorsForTypeKey,
@@ -25,6 +26,17 @@ const INPUT_TYPE_BY_KIND = {
 	date: 'date',
 	time: 'time',
 };
+
+/**
+ * Dropdown value for a subject field.
+ *
+ * Fields that have no id yet are keyed by client id, so they are still selectable; picking
+ * one assigns a real field id.
+ *
+ * @param {object} field - Subject field descriptor.
+ * @return {string} A value unique within the dropdown.
+ */
+const selectionValue = field => field.id || `clientId:${ field.clientId }`;
 
 /**
  * Default operator for a newly added rule, chosen from the subject field's own operator set
@@ -110,22 +122,37 @@ const RuleValueControl = ( { rule, subject, onChange } ) => {
  * @return {object} The rendered rule row.
  */
 const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
-	const subject = fields.find( field => field.id === rule.field );
+	const ensureFieldId = useEnsureFieldId();
+
+	const subject = fields.find( field => field.id && field.id === rule.field );
 	const missingSubject = rule.field && ! subject;
 
 	const handleFieldChange = useCallback(
-		fieldId => {
-			const nextSubject = fields.find( field => field.id === fieldId );
-			const operators = getOperatorsForTypeKey( nextSubject?.typeKey || 'string' );
+		selection => {
+			const nextSubject = fields.find( field => selectionValue( field ) === selection );
+
+			if ( ! nextSubject ) {
+				onChange( index, { field: '', operator: OPERATORS.IS, value: '' } );
+				return;
+			}
+
+			// A rule has to name the field id the renderer will use. Most fields have none:
+			// the renderer derives one from the label at output time, which would also mean a
+			// rule silently stopped matching as soon as someone edited that label. Assign a
+			// stable id instead — the same thing the field's own Name/ID control writes.
+			const usedIds = fields.map( field => field.id ).filter( Boolean );
+			const fieldId = ensureFieldId( nextSubject, usedIds );
+
+			const operators = getOperatorsForTypeKey( nextSubject.typeKey );
 			// Switching subject can invalidate the operator (a number field has no "contains"),
 			// so fall back to the new type's first operator rather than leaving a dead rule.
 			const operator = operators.includes( rule.operator )
 				? rule.operator
-				: defaultOperatorFor( nextSubject?.typeKey );
+				: defaultOperatorFor( nextSubject.typeKey );
 
 			onChange( index, { field: fieldId, operator, value: '' } );
 		},
-		[ fields, index, onChange, rule.operator ]
+		[ ensureFieldId, fields, index, onChange, rule.operator ]
 	);
 
 	const handleOperatorChange = useCallback(
@@ -209,7 +236,7 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 				{ Object.keys( grouped ).map( group => (
 					<optgroup key={ group } label={ group }>
 						{ grouped[ group ].map( field => (
-							<option key={ field.id } value={ field.id }>
+							<option key={ field.clientId } value={ selectionValue( field ) }>
 								{ field.label }
 							</option>
 						) ) }
@@ -263,20 +290,15 @@ const FieldValueControl = ( { value, onChange, fields } ) => {
 		[ onChange, rules, value ]
 	);
 
+	// A new condition starts without a subject rather than guessing the first field: choosing
+	// one may have to assign that field an id, which should follow a deliberate pick and not
+	// happen as a side effect of clicking "Add condition".
 	const addRule = useCallback( () => {
-		const first = fields[ 0 ];
 		onChange( {
 			...value,
-			rules: [
-				...rules,
-				{
-					field: first?.id || '',
-					operator: defaultOperatorFor( first?.typeKey ),
-					value: '',
-				},
-			],
+			rules: [ ...rules, { field: '', operator: OPERATORS.IS, value: '' } ],
 		} );
-	}, [ fields, onChange, rules, value ] );
+	}, [ onChange, rules, value ] );
 
 	if ( ! fields.length ) {
 		return (

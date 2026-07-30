@@ -1,9 +1,11 @@
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { addFilter } from '@wordpress/hooks';
+import { addFilter, hasFilter } from '@wordpress/hooks';
 import ConditionalLogicPanel from './components/panel.jsx';
 import { getTypeKeyForBlockName } from './util/field-types.ts';
 
 const FIELD_BLOCK_PREFIX = 'jetpack/field-';
+
+export const FILTER_NAMESPACE = 'jetpack/forms-conditional-logic';
 
 /**
  * Whether a block should carry the conditional-logic panel.
@@ -47,4 +49,25 @@ export const withConditionalLogic = createHigherOrderComponent(
 	'withConditionalLogic'
 );
 
-addFilter( 'editor.BlockEdit', 'jetpack/forms-conditional-logic', withConditionalLogic );
+/**
+ * Register the panel filter, at most once.
+ *
+ * This module ships in two bundles that load together on the Forms editor screen:
+ * `enqueue_block_editor_assets` enqueues dist/blocks/editor.js on every block editor screen,
+ * and the Forms editor enqueues dist/form-editor/jetpack-form-editor.js on top of it.
+ * addFilter does not de-duplicate by namespace, so an unguarded registration wraps BlockEdit
+ * twice and renders the panel twice.
+ *
+ * @return {boolean} True when this call registered the filter, false when it was already there.
+ */
+export const registerConditionalLogicFilter = () => {
+	if ( hasFilter( 'editor.BlockEdit', FILTER_NAMESPACE ) ) {
+		return false;
+	}
+
+	addFilter( 'editor.BlockEdit', FILTER_NAMESPACE, withConditionalLogic );
+
+	return true;
+};
+
+registerConditionalLogicFilter();

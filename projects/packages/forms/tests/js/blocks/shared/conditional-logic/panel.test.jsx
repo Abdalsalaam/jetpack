@@ -3,9 +3,17 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const SUBJECT_FIELDS = [
-	{ id: 'name_1', label: 'Name', typeKey: 'string', options: [], step: null },
-	{ id: 'budget_1', label: 'Budget', typeKey: 'number', options: [], step: null },
+	{ clientId: 'c-name', id: 'name_1', label: 'Name', typeKey: 'string', options: [], step: null },
 	{
+		clientId: 'c-budget',
+		id: 'budget_1',
+		label: 'Budget',
+		typeKey: 'number',
+		options: [],
+		step: null,
+	},
+	{
+		clientId: 'c-size',
 		id: 'size_1',
 		label: 'Size',
 		typeKey: 'choice',
@@ -15,18 +23,44 @@ const SUBJECT_FIELDS = [
 		],
 		step: null,
 	},
-	{ id: 'terms_1', label: 'Terms', typeKey: 'boolean', options: [], step: null },
+	{
+		clientId: 'c-terms',
+		id: 'terms_1',
+		label: 'Terms',
+		typeKey: 'boolean',
+		options: [],
+		step: null,
+	},
+	// The common case: a field the author never gave an explicit id.
+	{
+		clientId: 'c-colour',
+		id: '',
+		label: 'Favourite colour',
+		typeKey: 'string',
+		options: [],
+		step: null,
+	},
 ];
 
 await jest.unstable_mockModule( '@wordpress/block-editor', () => ( {
 	InspectorControls: ( { children } ) => <div>{ children }</div>,
 } ) );
 
+const mockEnsureFieldId = jest.fn( ( field, usedIds = [] ) => {
+	if ( field?.id ) {
+		return field.id;
+	}
+	// Mirrors the real hook: slugify the label, de-duplicate against ids already in use.
+	const base = ( field?.label || '' ).trim().toLowerCase().replace( /\s+/g, '-' );
+	return usedIds.includes( base ) ? `${ base }-2` : base;
+} );
+
 await jest.unstable_mockModule(
 	'../../../../../src/blocks/shared/conditional-logic/hooks/use-subject-fields.js',
 	() => ( {
 		__esModule: true,
 		default: () => SUBJECT_FIELDS,
+		useEnsureFieldId: () => mockEnsureFieldId,
 	} )
 );
 
@@ -206,13 +240,20 @@ describe( 'ConditionalLogicPanel', () => {
 		expect( screen.queryByLabelText( 'Value' ) ).not.toBeInTheDocument();
 	} );
 
-	it( 'lists every sibling field as a possible subject', async () => {
+	it( 'lists every sibling field, including ones with no explicit id', async () => {
 		await setup( withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ] ) );
 
 		const field = screen.getByLabelText( 'Field' );
 		const values = optionValues( field );
 
-		expect( values ).toEqual( [ '', 'name_1', 'budget_1', 'size_1', 'terms_1' ] );
+		expect( values ).toEqual( [
+			'',
+			'name_1',
+			'budget_1',
+			'size_1',
+			'terms_1',
+			'clientId:c-colour',
+		] );
 	} );
 
 	it( 'warns when a rule references a field that no longer exists', async () => {
@@ -224,14 +265,55 @@ describe( 'ConditionalLogicPanel', () => {
 		expect( within( container ).getByText( /no longer exists/i ) ).toBeInTheDocument();
 	} );
 
-	it( 'adds a condition seeded with the first field and a valid operator', async () => {
+	it( 'adds a condition with no subject chosen yet', async () => {
 		const { setAttributes } = await setup( withRules( [] ) );
 		await userEvent.click( screen.getByRole( 'button', { name: 'Add condition' } ) );
 
 		expect( setAttributes ).toHaveBeenCalledWith( {
 			conditionalLogic: expect.objectContaining( {
 				controls: {
-					fieldValue: { rules: [ { field: 'name_1', operator: 'is', value: '' } ] },
+					fieldValue: { rules: [ { field: '', operator: 'is', value: '' } ] },
+				},
+			} ),
+		} );
+	} );
+
+	// Regression: fields whose id the renderer derives at output time were filtered out of
+	// the dropdown, leaving only the Name field, which ships explicit default ids.
+	it( 'assigns an id when a field without one is chosen as the subject', async () => {
+		mockEnsureFieldId.mockClear();
+		const { setAttributes } = await setup(
+			withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ] )
+		);
+
+		await userEvent.selectOptions( screen.getByLabelText( 'Field' ), 'clientId:c-colour' );
+
+		expect( mockEnsureFieldId ).toHaveBeenCalledWith(
+			expect.objectContaining( { clientId: 'c-colour', id: '' } ),
+			expect.arrayContaining( [ 'name_1', 'budget_1' ] )
+		);
+		expect( setAttributes ).toHaveBeenCalledWith( {
+			conditionalLogic: expect.objectContaining( {
+				controls: {
+					fieldValue: {
+						rules: [ { field: 'favourite-colour', operator: 'is', value: '' } ],
+					},
+				},
+			} ),
+		} );
+	} );
+
+	it( 'keeps the existing id when the chosen field already has one', async () => {
+		const { setAttributes } = await setup(
+			withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ] )
+		);
+
+		await userEvent.selectOptions( screen.getByLabelText( 'Field' ), 'budget_1' );
+
+		expect( setAttributes ).toHaveBeenCalledWith( {
+			conditionalLogic: expect.objectContaining( {
+				controls: {
+					fieldValue: { rules: [ { field: 'budget_1', operator: 'equals', value: '' } ] },
 				},
 			} ),
 		} );

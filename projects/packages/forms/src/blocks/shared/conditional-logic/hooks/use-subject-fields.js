@@ -1,9 +1,34 @@
-import { useSelect } from '@wordpress/data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+import { useDispatch, useSelect } from '@wordpress/data';
+import { useCallback } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
+import { generateUniqueFormFieldId } from '../../util/generate-unique-id.js';
 import { getFieldOptions } from '../util/field-options.ts';
 import { getTypeKeyForBlockName } from '../util/field-types.ts';
 
 /**
- * Read a field block's visible label, falling back to its id.
+ * Turn a field label into a candidate field id.
+ *
+ * Matches what the Name/ID control accepts: alphanumerics, dash and underscore.
+ *
+ * @param {string} label - The field's visible label.
+ * @return {string} A slug usable as a field id.
+ */
+const toFieldIdBase = label => {
+	const slug = ( label || '' )
+		.trim()
+		.toLowerCase()
+		.replace( /\s+/g, '-' )
+		.replace( /[^a-z0-9_-]/g, '' );
+
+	return slug || 'field';
+};
+
+/**
+ * Read a field block's visible label.
+ *
+ * Falls back to the explicit id, then to a placeholder: a field with neither a label nor an
+ * id is still selectable, and an empty entry in the dropdown would be unusable.
  *
  * @param {object} block - The field block instance.
  * @return {string} A label suitable for the subject dropdown.
@@ -11,7 +36,12 @@ import { getTypeKeyForBlockName } from '../util/field-types.ts';
 const getFieldLabel = block => {
 	const labelBlock = ( block.innerBlocks || [] ).find( inner => inner.name === 'jetpack/label' );
 	const label = labelBlock?.attributes?.label;
-	return label && label.trim() ? label.trim() : block.attributes?.id;
+
+	if ( label && label.trim() ) {
+		return label.trim();
+	}
+
+	return block.attributes?.id || __( 'Untitled field', 'jetpack-forms' );
 };
 
 /**
@@ -40,9 +70,14 @@ const walk = ( blocks, excludeId, step, found ) => {
 
 		const typeKey = getTypeKeyForBlockName( block.name );
 
-		if ( typeKey && block.clientId !== excludeId && block.attributes?.id ) {
+		if ( typeKey && block.clientId !== excludeId ) {
+			// Fields are listed whether or not they carry an explicit `id`. Most do not: the
+			// renderer derives one from the label at output time, so requiring the attribute
+			// here would hide nearly every field and leave only the ones that ship a default
+			// id (the Name field). An id is assigned when a field is actually chosen.
 			found.push( {
-				id: block.attributes.id,
+				clientId: block.clientId,
+				id: block.attributes?.id || '',
 				label: getFieldLabel( block ),
 				typeKey,
 				options: getFieldOptions( block ),
@@ -90,5 +125,36 @@ const useSubjectFields = clientId =>
 		},
 		[ clientId ]
 	);
+
+/**
+ * Get a function that guarantees a subject field has a stable id.
+ *
+ * Most fields carry no explicit `id`: the renderer derives one from the label when the form
+ * is output. A rule cannot reference a derived id safely, because editing the label would
+ * change it and the rule would quietly stop matching. Choosing a field as a condition
+ * subject therefore assigns it the same kind of explicit id its Name/ID control writes.
+ *
+ * @return {Function} `( field, usedIds ) => fieldId`, assigning an id when the field has none.
+ */
+export const useEnsureFieldId = () => {
+	const { updateBlockAttributes } = useDispatch( blockEditorStore );
+
+	return useCallback(
+		( field, usedIds = [] ) => {
+			if ( ! field ) {
+				return '';
+			}
+			if ( field.id ) {
+				return field.id;
+			}
+
+			const fieldId = generateUniqueFormFieldId( toFieldIdBase( field.label ), usedIds );
+			updateBlockAttributes( field.clientId, { id: fieldId } );
+
+			return fieldId;
+		},
+		[ updateBlockAttributes ]
+	);
+};
 
 export default useSubjectFields;
