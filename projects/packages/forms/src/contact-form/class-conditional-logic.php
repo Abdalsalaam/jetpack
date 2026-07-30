@@ -101,9 +101,7 @@ class Conditional_Logic {
 			return 'string';
 		}
 
-		return isset( self::TYPE_KEY_BY_FIELD_TYPE[ $field_type ] )
-			? self::TYPE_KEY_BY_FIELD_TYPE[ $field_type ]
-			: 'string';
+		return self::TYPE_KEY_BY_FIELD_TYPE[ $field_type ] ?? 'string';
 	}
 
 	/**
@@ -157,7 +155,7 @@ class Conditional_Logic {
 			return true;
 		}
 
-		$logical_operator = isset( $logic['logicalOperator'] ) ? $logic['logicalOperator'] : 'any';
+		$logical_operator = $logic['logicalOperator'] ?? 'any';
 
 		if ( 'all' === $logical_operator ) {
 			$matched = ! in_array( false, $outcomes, true );
@@ -165,7 +163,7 @@ class Conditional_Logic {
 			$matched = in_array( true, $outcomes, true );
 		}
 
-		$action = isset( $logic['action'] ) ? $logic['action'] : 'show';
+		$action = $logic['action'] ?? 'show';
 
 		return 'hide' === $action ? ! $matched : $matched;
 	}
@@ -192,7 +190,7 @@ class Conditional_Logic {
 		$with_logic  = array();
 		$field_types = array();
 		foreach ( $fields as $field_id => $descriptor ) {
-			$field_types[ $field_id ] = isset( $descriptor['type'] ) ? $descriptor['type'] : 'text';
+			$field_types[ $field_id ] = $descriptor['type'] ?? 'text';
 			if ( isset( $descriptor['logic'] ) && is_array( $descriptor['logic'] ) && ! empty( $descriptor['logic']['enabled'] ) ) {
 				$with_logic[] = $field_id;
 			}
@@ -483,9 +481,6 @@ class Conditional_Logic {
 			return ! $value;
 		}
 		if ( is_array( $value ) ) {
-			if ( empty( $value ) ) {
-				return true;
-			}
 			foreach ( $value as $item ) {
 				if ( ! self::is_empty_value( $item ) ) {
 					return false;
@@ -494,11 +489,7 @@ class Conditional_Logic {
 			return true;
 		}
 		if ( is_object( $value ) ) {
-			$vars = get_object_vars( $value );
-			if ( empty( $vars ) ) {
-				return true;
-			}
-			foreach ( $vars as $item ) {
+			foreach ( get_object_vars( $value ) as $item ) {
 				if ( ! self::is_empty_value( $item ) ) {
 					return false;
 				}
