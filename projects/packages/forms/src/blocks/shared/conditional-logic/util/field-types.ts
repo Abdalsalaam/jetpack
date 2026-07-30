@@ -76,9 +76,12 @@ export const TYPE_KEY_BY_BLOCK_NAME: Record< string, TypeKey > = {
 	'jetpack/field-textarea': 'string',
 	'jetpack/field-telephone': 'string',
 	'jetpack/field-select': 'choice',
-	'jetpack/field-single-choice': 'choice',
+	// Registered names, which do not always match the directory: the blocks in
+	// field-single-choice/ and field-multiple-choice/ register as `field-radio` and
+	// `field-checkbox-multiple`. block-names.test.js checks this table against the source.
+	'jetpack/field-radio': 'choice',
 	'jetpack/field-image-select': 'choice',
-	'jetpack/field-multiple-choice': 'multichoice',
+	'jetpack/field-checkbox-multiple': 'multichoice',
 	'jetpack/field-number': 'number',
 	'jetpack/field-slider': 'number',
 	'jetpack/field-rating': 'number',
