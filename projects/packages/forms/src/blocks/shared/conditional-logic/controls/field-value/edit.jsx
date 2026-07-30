@@ -1,14 +1,7 @@
-import {
-	BaseControl,
-	Button,
-	Flex,
-	FlexItem,
-	Notice,
-	SelectControl,
-	TextControl,
-} from '@wordpress/components';
+import { Button, Notice, SelectControl, TextControl } from '@wordpress/components';
 import { useCallback, useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
+import { closeSmall, plus } from '@wordpress/icons';
 import { useEnsureFieldId } from '../../hooks/use-subject-fields.js';
 import {
 	OPERATORS,
@@ -87,6 +80,7 @@ const RuleValueControl = ( { rule, subject, onChange } ) => {
 		return (
 			<SelectControl
 				label={ label }
+				hideLabelFromVision
 				value={ value }
 				options={ [ { value: '', label: __( 'Select an option…', 'jetpack-forms' ) }, ...options ] }
 				onChange={ onChange }
@@ -101,6 +95,8 @@ const RuleValueControl = ( { rule, subject, onChange } ) => {
 	return (
 		<TextControl
 			label={ label }
+			hideLabelFromVision
+			placeholder={ __( 'Value', 'jetpack-forms' ) }
 			type={ type }
 			value={ value }
 			onChange={ onChange }
@@ -185,36 +181,26 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 	}, {} );
 
 	return (
-		<BaseControl
-			className="jetpack-contact-form__conditional-logic-rule"
-			__nextHasNoMarginBottom={ true }
-		>
-			<Flex justify="space-between" align="center">
-				<FlexItem>
-					<strong>
-						{ sprintf(
-							/* translators: %d: condition number, starting at 1 */
-							__( 'Condition %d', 'jetpack-forms' ),
-							index + 1
-						) }
-					</strong>
-				</FlexItem>
-				<FlexItem>
-					<Button
-						size="small"
-						variant="tertiary"
-						isDestructive
-						onClick={ handleRemove }
-						aria-label={ sprintf(
-							/* translators: %d: condition number, starting at 1 */
-							__( 'Remove condition %d', 'jetpack-forms' ),
-							index + 1
-						) }
-					>
-						{ __( 'Remove', 'jetpack-forms' ) }
-					</Button>
-				</FlexItem>
-			</Flex>
+		<div className="jetpack-contact-form__conditional-logic-rule">
+			<div className="jetpack-contact-form__conditional-logic-rule-header">
+				<span className="jetpack-contact-form__conditional-logic-rule-title">
+					{ sprintf(
+						/* translators: %d: condition number, starting at 1 */
+						__( 'Condition %d', 'jetpack-forms' ),
+						index + 1
+					) }
+				</span>
+				<Button
+					size="small"
+					icon={ closeSmall }
+					onClick={ handleRemove }
+					label={ sprintf(
+						/* translators: %d: condition number, starting at 1 */
+						__( 'Remove condition %d', 'jetpack-forms' ),
+						index + 1
+					) }
+				/>
+			</div>
 
 			{ missingSubject && (
 				<Notice status="warning" isDismissible={ false }>
@@ -225,39 +211,43 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 				</Notice>
 			) }
 
-			<SelectControl
-				label={ __( 'Field', 'jetpack-forms' ) }
-				value={ rule.field || '' }
-				onChange={ handleFieldChange }
-				__nextHasNoMarginBottom={ true }
-				__next40pxDefaultSize={ true }
-			>
-				<option value="">{ __( 'Select a field…', 'jetpack-forms' ) }</option>
-				{ Object.keys( grouped ).map( group => (
-					<optgroup key={ group } label={ group }>
-						{ grouped[ group ].map( field => (
-							<option key={ field.clientId } value={ selectionValue( field ) }>
-								{ field.label }
-							</option>
-						) ) }
-					</optgroup>
-				) ) }
-			</SelectControl>
+			<div className="jetpack-contact-form__conditional-logic-rule-body">
+				<SelectControl
+					label={ __( 'Field', 'jetpack-forms' ) }
+					hideLabelFromVision
+					value={ rule.field || '' }
+					onChange={ handleFieldChange }
+					__nextHasNoMarginBottom={ true }
+					__next40pxDefaultSize={ true }
+				>
+					<option value="">{ __( 'Select a field…', 'jetpack-forms' ) }</option>
+					{ Object.keys( grouped ).map( group => (
+						<optgroup key={ group } label={ group }>
+							{ grouped[ group ].map( field => (
+								<option key={ field.clientId } value={ selectionValue( field ) }>
+									{ field.label }
+								</option>
+							) ) }
+						</optgroup>
+					) ) }
+				</SelectControl>
 
-			<SelectControl
-				label={ __( 'Operator', 'jetpack-forms' ) }
-				value={ rule.operator }
-				options={ operators.map( operator => ( {
-					value: operator,
-					label: getOperatorLabel( operator ),
-				} ) ) }
-				onChange={ handleOperatorChange }
-				__nextHasNoMarginBottom={ true }
-				__next40pxDefaultSize={ true }
-			/>
+				<SelectControl
+					label={ __( 'Operator', 'jetpack-forms' ) }
+					hideLabelFromVision
+					value={ rule.operator }
+					options={ operators.map( operator => ( {
+						value: operator,
+						label: getOperatorLabel( operator ),
+					} ) ) }
+					onChange={ handleOperatorChange }
+					__nextHasNoMarginBottom={ true }
+					__next40pxDefaultSize={ true }
+				/>
 
-			<RuleValueControl rule={ rule } subject={ subject } onChange={ handleValueChange } />
-		</BaseControl>
+				<RuleValueControl rule={ rule } subject={ subject } onChange={ handleValueChange } />
+			</div>
+		</div>
 	);
 };
 
@@ -321,7 +311,15 @@ const FieldValueControl = ( { value, onChange, fields } ) => {
 				/>
 			) ) }
 
-			<Button variant="secondary" onClick={ addRule }>
+			{ /* The single entry point for adding conditions. When further condition types
+			     land (query string, user role, date and time) this becomes the menu that
+			     offers the choice, so it stays the panel's one primary action. */ }
+			<Button
+				variant="secondary"
+				icon={ plus }
+				onClick={ addRule }
+				className="jetpack-contact-form__conditional-logic-add"
+			>
 				{ __( 'Add condition', 'jetpack-forms' ) }
 			</Button>
 		</div>

@@ -1,0 +1,83 @@
+/**
+ * Conditional logic inspector panel.
+ *
+ * The sidebar is narrow, so the panel leans on vertical
+ * rhythm rather than horizontal arrangement: one control
+ * per line, conditions grouped into cards, and a single
+ * primary action at the end. Logical properties throughout
+ * so the panel mirrors correctly in RTL.
+ */
+
+.jetpack-contact-form__conditional-logic {
+
+	.jetpack-contact-form__conditional-logic-intro {
+		margin-block: 0 16px;
+		color: #757575;
+		font-size: 12px;
+		line-height: 1.5;
+	}
+
+	.jetpack-contact-form__conditional-logic-error {
+		margin-block-end: 16px;
+		margin-inline: 0;
+	}
+
+	// Action and match selectors: stacked and individually
+	// labelled, rather than inlined into a sentence that
+	// wraps unpredictably at sidebar widths.
+	.jetpack-contact-form__conditional-logic-summary {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		margin-block-end: 20px;
+	}
+
+	.jetpack-contact-form__conditional-logic-control {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	// One card per condition, so multiple conditions read as
+	// a list instead of an undifferentiated stack of selects.
+	.jetpack-contact-form__conditional-logic-rule {
+		padding: 12px;
+		border: 1px solid #e0e0e0;
+		border-radius: 4px;
+		background: #fff;
+	}
+
+	.jetpack-contact-form__conditional-logic-rule-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		margin-block-end: 8px;
+	}
+
+	.jetpack-contact-form__conditional-logic-rule-title {
+		color: #757575;
+		font-size: 11px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+
+	.jetpack-contact-form__conditional-logic-rule-body {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.jetpack-contact-form__conditional-logic-add {
+		justify-content: center;
+		width: 100%;
+	}
+
+	// Occasional actions, kept clear of the primary flow.
+	.jetpack-contact-form__conditional-logic-utilities {
+		display: flex;
+		justify-content: flex-end;
+		margin-block-start: 12px;
+	}
+}

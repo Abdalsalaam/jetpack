@@ -106,7 +106,7 @@ const optionValues = select =>
 		.map( o => o.value );
 
 const openMenu = async () => {
-	await userEvent.click( screen.getByRole( 'button', { name: /add condition type/i } ) );
+	await userEvent.click( screen.getByRole( 'button', { name: /conditional logic options/i } ) );
 };
 
 describe( 'ConditionalLogicPanel', () => {
@@ -115,14 +115,24 @@ describe( 'ConditionalLogicPanel', () => {
 		expect( screen.getByText( 'Conditional logic' ) ).toBeInTheDocument();
 	} );
 
-	it( 'offers Field Value plus the utilities in the add-control menu', async () => {
+	it( 'offers copy, paste and reset in the options menu', async () => {
 		await setup();
 		await openMenu();
 
-		expect( screen.getByRole( 'menuitem', { name: 'Field Value' } ) ).toBeInTheDocument();
 		expect( screen.getByText( 'Copy' ) ).toBeInTheDocument();
 		expect( screen.getByText( 'Paste' ) ).toBeInTheDocument();
 		expect( screen.getByText( 'Reset all' ) ).toBeInTheDocument();
+	} );
+
+	it( 'has no control-picker menu item, since Field Value is always shown', async () => {
+		await setup();
+		await openMenu();
+		expect( screen.queryByRole( 'menuitem', { name: 'Field Value' } ) ).not.toBeInTheDocument();
+	} );
+
+	it( 'shows the Add condition button with no conditions configured', async () => {
+		await setup();
+		expect( screen.getByRole( 'button', { name: /add condition/i } ) ).toBeInTheDocument();
 	} );
 
 	it( 'does not offer an Import action', async () => {
@@ -131,26 +141,32 @@ describe( 'ConditionalLogicPanel', () => {
 		expect( screen.queryByText( 'Import' ) ).not.toBeInTheDocument();
 	} );
 
-	it( 'activates the fieldValue control and enables logic', async () => {
+	// `enabled` is derived from whether any rule exists, so a field only carries conditional
+	// logic once it actually has a condition.
+	it( 'enables logic when the first condition is added', async () => {
 		const { setAttributes } = await setup();
-		await openMenu();
-		await userEvent.click( screen.getByRole( 'menuitem', { name: 'Field Value' } ) );
+		await userEvent.click( screen.getByRole( 'button', { name: /add condition/i } ) );
 
 		expect( setAttributes ).toHaveBeenCalledWith( {
 			conditionalLogic: expect.objectContaining( {
 				enabled: true,
-				controls: { fieldValue: { rules: [] } },
+				controls: { fieldValue: { rules: [ { field: '', operator: 'is', value: '' } ] } },
 			} ),
 		} );
 	} );
 
-	it( 'disables logic again when the last control is switched off', async () => {
-		const { setAttributes } = await setup( withRules( [] ) );
-		await openMenu();
-		await userEvent.click( screen.getByRole( 'menuitem', { name: 'Field Value' } ) );
+	it( 'disables logic again when the last condition is removed', async () => {
+		const { setAttributes } = await setup(
+			withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ] )
+		);
+
+		await userEvent.click( screen.getByRole( 'button', { name: 'Remove condition 1' } ) );
 
 		expect( setAttributes ).toHaveBeenCalledWith( {
-			conditionalLogic: expect.objectContaining( { enabled: false, controls: {} } ),
+			conditionalLogic: expect.objectContaining( {
+				enabled: false,
+				controls: { fieldValue: { rules: [] } },
+			} ),
 		} );
 	} );
 
@@ -171,15 +187,15 @@ describe( 'ConditionalLogicPanel', () => {
 		} );
 	} );
 
-	it( 'hides the action and match selectors until a control is active', async () => {
+	it( 'hides the action and match selectors until a condition exists', async () => {
 		await setup();
 		expect( screen.queryByLabelText( 'Action' ) ).not.toBeInTheDocument();
 	} );
 
-	it( 'shows the action and match selectors once a control is active', async () => {
-		await setup( withRules( [] ) );
+	it( 'shows the action and match selectors once a condition exists', async () => {
+		await setup( withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ] ) );
 		expect( screen.getByLabelText( 'Action' ) ).toBeInTheDocument();
-		expect( screen.getByLabelText( 'Match type' ) ).toBeInTheDocument();
+		expect( screen.getByLabelText( 'When' ) ).toBeInTheDocument();
 	} );
 
 	it( 'offers the operators belonging to the subject field type', async () => {

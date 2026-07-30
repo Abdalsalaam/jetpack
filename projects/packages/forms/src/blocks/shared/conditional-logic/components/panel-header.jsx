@@ -1,9 +1,8 @@
 import { DropdownMenu, MenuGroup, MenuItem } from '@wordpress/components';
 import { useCallback, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { check, plus } from '@wordpress/icons';
+import { moreVertical } from '@wordpress/icons';
 import { DEFAULT_LOGIC } from '../constants.js';
-import { CONTROLS } from '../controls/index.js';
 import { OPERATORS } from '../util/field-types.ts';
 
 /**
@@ -50,33 +49,20 @@ const isValidLogic = parsed => {
 };
 
 /**
- * The panel's "+" menu: switch condition types on and off, then copy, paste, or reset.
+ * Copy, paste and reset for a field's conditional logic.
  *
- * @param {object}   props          - Component props.
- * @param {object}   props.logic    - The current normalized logic object.
- * @param {Function} props.onChange - Called with the next logic object.
- * @param {Function} props.onError  - Called with an error message, or null to clear it.
- * @return {object} The rendered dropdown.
+ * Rendered as a quiet overflow menu rather than a prominent button: these are occasional
+ * actions, and the panel's primary affordance is adding a condition.
+ *
+ * @param {object}   props               - Component props.
+ * @param {object}   props.logic         - The current normalized logic object.
+ * @param {Function} props.onChange      - Called with the next logic object.
+ * @param {Function} props.onError       - Called with an error message, or null to clear it.
+ * @param {boolean}  props.hasConditions - Whether the field currently has any condition.
+ * @return {object|null} The rendered menu, or null when there is nothing to act on.
  */
-const ConditionalLogicPanelHeader = ( { logic, onChange, onError } ) => {
+const ConditionalLogicUtilities = ( { logic, onChange, onError, hasConditions } ) => {
 	const [ busy, setBusy ] = useState( false );
-
-	const toggleControl = useCallback(
-		control => {
-			const controls = { ...logic.controls };
-
-			if ( controls[ control.slug ] ) {
-				delete controls[ control.slug ];
-			} else {
-				controls[ control.slug ] = control.defaultValue;
-			}
-
-			// Enabling is implicit: a field with no active control has nothing to evaluate, so
-			// leaving `enabled` true would only make the evaluators do pointless work.
-			onChange( { ...logic, controls, enabled: Object.keys( controls ).length > 0 } );
-		},
-		[ logic, onChange ]
-	);
 
 	const handleCopy = useCallback( async () => {
 		onError( null );
@@ -112,33 +98,18 @@ const ConditionalLogicPanelHeader = ( { logic, onChange, onError } ) => {
 		onChange( { ...DEFAULT_LOGIC, controls: {} } );
 	}, [ onChange, onError ] );
 
-	const hasEdits = Object.keys( logic.controls ).length > 0;
-
+	// With nothing configured there is nothing to copy or reset, and pasting is still useful,
+	// so the menu stays available but Copy and Reset are inert.
 	return (
-		<DropdownMenu
-			icon={ plus }
-			label={ __( 'Add condition type', 'jetpack-forms' ) }
-			className="jetpack-contact-form__conditional-logic-menu"
-		>
-			{ () => (
-				<>
-					<MenuGroup label={ __( 'Controls', 'jetpack-forms' ) }>
-						{ CONTROLS.map( control => {
-							const isActive = !! logic.controls[ control.slug ];
-							return (
-								<MenuItem
-									key={ control.slug }
-									icon={ isActive ? check : undefined }
-									isSelected={ isActive }
-									onClick={ () => toggleControl( control ) }
-								>
-									{ control.label }
-								</MenuItem>
-							);
-						} ) }
-					</MenuGroup>
+		<div className="jetpack-contact-form__conditional-logic-utilities">
+			<DropdownMenu
+				icon={ moreVertical }
+				label={ __( 'Conditional logic options', 'jetpack-forms' ) }
+				toggleProps={ { size: 'small' } }
+			>
+				{ () => (
 					<MenuGroup>
-						<MenuItem onClick={ handleCopy } disabled={ ! hasEdits }>
+						<MenuItem onClick={ handleCopy } disabled={ ! hasConditions }>
 							{ __( 'Copy', 'jetpack-forms' ) }
 						</MenuItem>
 						<MenuItem
@@ -152,14 +123,14 @@ const ConditionalLogicPanelHeader = ( { logic, onChange, onError } ) => {
 						>
 							{ __( 'Paste', 'jetpack-forms' ) }
 						</MenuItem>
-						<MenuItem onClick={ handleReset } disabled={ ! hasEdits } isDestructive>
+						<MenuItem onClick={ handleReset } disabled={ ! hasConditions } isDestructive>
 							{ __( 'Reset all', 'jetpack-forms' ) }
 						</MenuItem>
 					</MenuGroup>
-				</>
-			) }
-		</DropdownMenu>
+				) }
+			</DropdownMenu>
+		</div>
 	);
 };
 
-export default ConditionalLogicPanelHeader;
+export default ConditionalLogicUtilities;
