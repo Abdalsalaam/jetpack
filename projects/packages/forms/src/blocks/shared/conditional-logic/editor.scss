@@ -17,11 +17,6 @@
 		line-height: 1.5;
 	}
 
-	.jetpack-contact-form__conditional-logic-error {
-		margin-block-end: 16px;
-		margin-inline: 0;
-	}
-
 	// Action and match selectors: stacked and individually
 	// labelled, rather than inlined into a sentence that
 	// wraps unpredictably at sidebar widths.
@@ -72,12 +67,5 @@
 	.jetpack-contact-form__conditional-logic-add {
 		justify-content: center;
 		width: 100%;
-	}
-
-	// Occasional actions, kept clear of the primary flow.
-	.jetpack-contact-form__conditional-logic-utilities {
-		display: flex;
-		justify-content: flex-end;
-		margin-block-start: 12px;
 	}
 }

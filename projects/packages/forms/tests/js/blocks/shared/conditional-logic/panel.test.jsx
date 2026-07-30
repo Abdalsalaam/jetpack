@@ -105,40 +105,15 @@ const optionValues = select =>
 		.getAllByRole( 'option' )
 		.map( o => o.value );
 
-const openMenu = async () => {
-	await userEvent.click( screen.getByRole( 'button', { name: /conditional logic options/i } ) );
-};
-
 describe( 'ConditionalLogicPanel', () => {
 	it( 'renders the panel title', async () => {
 		await setup();
 		expect( screen.getByText( 'Conditional logic' ) ).toBeInTheDocument();
 	} );
 
-	it( 'offers copy, paste and reset in the options menu', async () => {
-		await setup();
-		await openMenu();
-
-		expect( screen.getByText( 'Copy' ) ).toBeInTheDocument();
-		expect( screen.getByText( 'Paste' ) ).toBeInTheDocument();
-		expect( screen.getByText( 'Reset all' ) ).toBeInTheDocument();
-	} );
-
-	it( 'has no control-picker menu item, since Field Value is always shown', async () => {
-		await setup();
-		await openMenu();
-		expect( screen.queryByRole( 'menuitem', { name: 'Field Value' } ) ).not.toBeInTheDocument();
-	} );
-
 	it( 'shows the Add condition button with no conditions configured', async () => {
 		await setup();
 		expect( screen.getByRole( 'button', { name: /add condition/i } ) ).toBeInTheDocument();
-	} );
-
-	it( 'does not offer an Import action', async () => {
-		await setup();
-		await openMenu();
-		expect( screen.queryByText( 'Import' ) ).not.toBeInTheDocument();
 	} );
 
 	// `enabled` is derived from whether any rule exists, so a field only carries conditional
@@ -167,23 +142,6 @@ describe( 'ConditionalLogicPanel', () => {
 				enabled: false,
 				controls: { fieldValue: { rules: [] } },
 			} ),
-		} );
-	} );
-
-	it( 'resets everything back to the default', async () => {
-		const { setAttributes } = await setup(
-			withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ], { action: 'hide' } )
-		);
-		await openMenu();
-		await userEvent.click( screen.getByText( 'Reset all' ) );
-
-		expect( setAttributes ).toHaveBeenCalledWith( {
-			conditionalLogic: {
-				enabled: false,
-				action: 'show',
-				logicalOperator: 'any',
-				controls: {},
-			},
 		} );
 	} );
 

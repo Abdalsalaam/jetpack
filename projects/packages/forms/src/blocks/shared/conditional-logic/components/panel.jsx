@@ -1,11 +1,10 @@
 import { InspectorControls } from '@wordpress/block-editor';
-import { Notice, PanelBody, SelectControl } from '@wordpress/components';
-import { useCallback, useMemo, useState } from '@wordpress/element';
+import { PanelBody, SelectControl } from '@wordpress/components';
+import { useCallback, useMemo } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { normalizeLogic } from '../constants.js';
 import { CONTROLS } from '../controls/index.js';
 import useSubjectFields from '../hooks/use-subject-fields.js';
-import ConditionalLogicUtilities from './panel-header.jsx';
 import '../editor.scss';
 
 const ACTION_OPTIONS = [
@@ -40,8 +39,6 @@ const countRules = controls =>
  * @return {object} The rendered panel.
  */
 const ConditionalLogicPanel = ( { clientId, attributes, setAttributes } ) => {
-	const [ error, setError ] = useState( null );
-
 	const logic = useMemo(
 		() => normalizeLogic( attributes.conditionalLogic ),
 		[ attributes.conditionalLogic ]
@@ -90,17 +87,6 @@ const ConditionalLogicPanel = ( { clientId, attributes, setAttributes } ) => {
 				initialOpen={ false }
 				className="jetpack-contact-form__panel jetpack-contact-form__conditional-logic"
 			>
-				{ error && (
-					<Notice
-						status="error"
-						isDismissible={ true }
-						onRemove={ () => setError( null ) }
-						className="jetpack-contact-form__conditional-logic-error"
-					>
-						{ error }
-					</Notice>
-				) }
-
 				{ hasConditions ? (
 					<div className="jetpack-contact-form__conditional-logic-summary">
 						<SelectControl
@@ -140,13 +126,6 @@ const ConditionalLogicPanel = ( { clientId, attributes, setAttributes } ) => {
 						/>
 					);
 				} ) }
-
-				<ConditionalLogicUtilities
-					logic={ logic }
-					onChange={ updateLogic }
-					onError={ setError }
-					hasConditions={ hasConditions }
-				/>
 			</PanelBody>
 		</InspectorControls>
 	);
