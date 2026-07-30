@@ -56,13 +56,6 @@ class WPCOM_REST_API_V2_Endpoint_AI_Feature_Settings extends WP_REST_Controller 
 	public $rest_base = 'jetpack-ai/feature-settings';
 
 	/**
-	 * Feature keys whose toggles the endpoint reads and writes.
-	 *
-	 * @var string[]
-	 */
-	const FEATURE_KEYS = array( 'writing_assistant', 'image_editor', 'feature_clip', 'seo_enhancer', 'ai_search' );
-
-	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -158,7 +151,7 @@ class WPCOM_REST_API_V2_Endpoint_AI_Feature_Settings extends WP_REST_Controller 
 
 		$features = $request->get_param( 'features' );
 		if ( is_array( $features ) ) {
-			foreach ( self::FEATURE_KEYS as $key ) {
+			foreach ( Jetpack_AI_Settings::FEATURE_OPTIONS as $key => $option ) {
 				if ( ! array_key_exists( $key, $features ) ) {
 					continue;
 				}
@@ -172,7 +165,7 @@ class WPCOM_REST_API_V2_Endpoint_AI_Feature_Settings extends WP_REST_Controller 
 					$value = $value['enabled'];
 				}
 
-				update_option( Jetpack_AI_Settings::FEATURE_OPTIONS[ $key ], rest_sanitize_boolean( $value ) );
+				update_option( $option, rest_sanitize_boolean( $value ) );
 			}
 		}
 
@@ -196,22 +189,23 @@ class WPCOM_REST_API_V2_Endpoint_AI_Feature_Settings extends WP_REST_Controller 
 		$ai_search_requires_upgrade = ! ( $search_plan && $search_plan->supports_instant_search() && ! $search_plan->is_free_plan() );
 
 		$stored = array();
-		foreach ( self::FEATURE_KEYS as $key ) {
+		foreach ( Jetpack_AI_Settings::FEATURE_OPTIONS as $key => $option ) {
 			$stored[ $key ] = (bool) get_option(
-				Jetpack_AI_Settings::FEATURE_OPTIONS[ $key ],
+				$option,
 				Jetpack_AI_Settings::FEATURE_DEFAULTS[ $key ]
 			);
 		}
 
 		return array(
-			'host_allows_ai' => Jetpack_AI_Settings::host_allows_ai(),
-			'is_connected'   => $this->is_connected(),
-			'plan'           => array(
+			'host_allows_ai'    => Jetpack_AI_Settings::host_allows_ai(),
+			'is_connected'      => $this->is_connected(),
+			'is_user_connected' => $this->is_user_connected(),
+			'plan'              => array(
 				'supports_ai'     => class_exists( Current_Plan::class ) && Current_Plan::supports( 'ai-assistant' ),
 				'supports_search' => $supports_search,
 			),
-			'master_enabled' => Jetpack_AI_Settings::is_master_enabled(),
-			'features'       => array(
+			'master_enabled'    => Jetpack_AI_Settings::is_master_enabled(),
+			'features'          => array(
 				'writing_assistant' => array( 'enabled' => $stored['writing_assistant'] ),
 				'image_editor'      => array( 'enabled' => $stored['image_editor'] ),
 				'feature_clip'      => array(
@@ -290,6 +284,22 @@ class WPCOM_REST_API_V2_Endpoint_AI_Feature_Settings extends WP_REST_Controller 
 		return ( new Host() )->is_wpcom_simple()
 			|| ( ( new Manager( 'jetpack' ) )->has_connected_owner()
 				&& ! ( new Status() )->is_offline_mode() );
+	}
+
+	/**
+	 * Whether the current user's own account is connected. is_connected() above
+	 * is the site-level gate the feature load points share, but the editor chat
+	 * keys its variant off the requesting user: the agents-manager loader
+	 * downgrades to its disconnected variant when the current user holds no
+	 * token, so the settings page needs this bit to tell an admin whose account
+	 * is not connected that the chat will not run for them. Simple
+	 * short-circuits true, matching is_connected().
+	 *
+	 * @return bool
+	 */
+	private function is_user_connected() {
+		return ( new Host() )->is_wpcom_simple()
+			|| ( new Manager( 'jetpack' ) )->is_user_connected();
 	}
 }
 
