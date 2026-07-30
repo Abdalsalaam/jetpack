@@ -26,7 +26,9 @@ export default {
 				enabled: false,
 				action: 'show',
 				logicalOperator: 'any',
-				rules: [],
+				// Keyed by control slug so further condition types (query string, user role,
+				// date and time) become sibling keys rather than a reshape.
+				controls: {},
 			},
 		},
 	},
