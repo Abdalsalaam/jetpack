@@ -1,4 +1,5 @@
 import { store as blockEditorStore } from '@wordpress/block-editor';
+import { getBlockType } from '@wordpress/blocks';
 import { useDispatch, useSelect } from '@wordpress/data';
 import { useCallback } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -79,6 +80,9 @@ const walk = ( blocks, excludeId, step, found ) => {
 				clientId: block.clientId,
 				id: block.attributes?.id || '',
 				label: getFieldLabel( block ),
+				// The block's own registered title, so the dropdown uses the same words as the
+				// inserter and there is no second list of type names to drift out of step.
+				typeLabel: getBlockType( block.name )?.title || '',
 				typeKey,
 				options: getFieldOptions( block ),
 				step: currentStep,

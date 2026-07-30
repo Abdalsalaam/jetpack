@@ -3,11 +3,20 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const SUBJECT_FIELDS = [
-	{ clientId: 'c-name', id: 'name_1', label: 'Name', typeKey: 'string', options: [], step: null },
+	{
+		clientId: 'c-name',
+		id: 'name_1',
+		label: 'Name',
+		typeLabel: 'Name field',
+		typeKey: 'string',
+		options: [],
+		step: null,
+	},
 	{
 		clientId: 'c-budget',
 		id: 'budget_1',
 		label: 'Budget',
+		typeLabel: 'Number input field',
 		typeKey: 'number',
 		options: [],
 		step: null,
@@ -16,6 +25,7 @@ const SUBJECT_FIELDS = [
 		clientId: 'c-size',
 		id: 'size_1',
 		label: 'Size',
+		typeLabel: 'Dropdown field',
 		typeKey: 'choice',
 		options: [
 			{ value: 'Small', label: 'Small' },
@@ -27,6 +37,7 @@ const SUBJECT_FIELDS = [
 		clientId: 'c-terms',
 		id: 'terms_1',
 		label: 'Terms',
+		typeLabel: 'Checkbox',
 		typeKey: 'boolean',
 		options: [],
 		step: null,
@@ -35,7 +46,8 @@ const SUBJECT_FIELDS = [
 	{
 		clientId: 'c-colour',
 		id: '',
-		label: 'Favourite colour',
+		label: 'Untitled field',
+		typeLabel: 'Text input field',
 		typeKey: 'string',
 		options: [],
 		step: null,
@@ -254,6 +266,24 @@ describe( 'ConditionalLogicPanel', () => {
 		] );
 	} );
 
+	// An author cannot tell two "Untitled field" entries apart, so the dropdown appends the
+	// field's own block title.
+	it( 'shows the field type alongside each label', async () => {
+		await setup( withRules( [ { field: 'name_1', operator: 'is', value: 'x' } ] ) );
+
+		const field = screen.getByLabelText( 'Field' );
+
+		expect(
+			within( field ).getByRole( 'option', { name: 'Name (Name field)' } )
+		).toBeInTheDocument();
+		expect(
+			within( field ).getByRole( 'option', { name: 'Budget (Number input field)' } )
+		).toBeInTheDocument();
+		expect(
+			within( field ).getByRole( 'option', { name: 'Untitled field (Text input field)' } )
+		).toBeInTheDocument();
+	} );
+
 	it( 'warns when a rule references a field that no longer exists', async () => {
 		// Scoped to the rendered container: Notice mirrors its text into an aria-live region
 		// that WordPress appends to document.body, which would match twice.
@@ -294,7 +324,7 @@ describe( 'ConditionalLogicPanel', () => {
 			conditionalLogic: expect.objectContaining( {
 				controls: {
 					fieldValue: {
-						rules: [ { field: 'favourite-colour', operator: 'is', value: '' } ],
+						rules: [ { field: 'untitled-field', operator: 'is', value: '' } ],
 					},
 				},
 			} ),

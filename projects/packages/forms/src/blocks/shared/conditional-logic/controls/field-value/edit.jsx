@@ -32,6 +32,25 @@ const INPUT_TYPE_BY_KIND = {
 const selectionValue = field => field.id || `clientId:${ field.clientId }`;
 
 /**
+ * Dropdown text for a subject field.
+ *
+ * The field type is appended so an author can tell entries apart when the labels are
+ * unhelpful — two fields both reading "Untitled field", or several sharing a label.
+ *
+ * @param {object} field - Subject field descriptor.
+ * @return {string} Text to show in the dropdown.
+ */
+const optionLabel = field =>
+	field.typeLabel
+		? sprintf(
+				/* translators: 1: form field label, 2: the field's type, e.g. "Dropdown field" */
+				__( '%1$s (%2$s)', 'jetpack-forms' ),
+				field.label,
+				field.typeLabel
+		  )
+		: field.label;
+
+/**
  * Default operator for a newly added rule, chosen from the subject field's own operator set
  * so the rule is valid the moment it appears.
  *
@@ -225,7 +244,7 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 						<optgroup key={ group } label={ group }>
 							{ grouped[ group ].map( field => (
 								<option key={ field.clientId } value={ selectionValue( field ) }>
-									{ field.label }
+									{ optionLabel( field ) }
 								</option>
 							) ) }
 						</optgroup>
