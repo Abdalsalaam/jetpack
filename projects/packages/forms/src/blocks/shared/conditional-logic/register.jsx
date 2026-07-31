@@ -1,8 +1,21 @@
 import { hasFeatureFlag } from '@automattic/jetpack-shared-extension-utils';
 import { createHigherOrderComponent } from '@wordpress/compose';
+import { lazy, Suspense } from '@wordpress/element';
 import { addFilter, hasFilter } from '@wordpress/hooks';
-import ConditionalLogicPanel from './components/panel.jsx';
 import { getTypeKeyForBlockName } from './util/block-types.js';
+
+/**
+ * The panel UI, and everything it pulls in, in a chunk of its own.
+ *
+ * While the feature is off the filter below is never registered, so this component never
+ * renders and the browser never requests the chunk: none of the panel, its controls, its
+ * operator labels or its stylesheet is parsed or executed in the editor. That is the point of
+ * splitting it — code that never reaches the editor cannot break it.
+ *
+ * A static import would defeat that: webpack would fold all of it into the main editor bundle
+ * regardless of the flag.
+ */
+const ConditionalLogicPanel = lazy( () => import( './components/panel.jsx' ) );
 
 const FIELD_BLOCK_PREFIX = 'jetpack/field-';
 
@@ -43,11 +56,16 @@ export const withConditionalLogic = createHigherOrderComponent(
 		return (
 			<>
 				<BlockEdit { ...props } />
-				<ConditionalLogicPanel
-					clientId={ props.clientId }
-					attributes={ props.attributes }
-					setAttributes={ props.setAttributes }
-				/>
+				{ /* No fallback: the inspector should not flash a placeholder panel while the
+				     chunk loads. It arrives on the first field block selected and is cached
+				     from then on. */ }
+				<Suspense fallback={ null }>
+					<ConditionalLogicPanel
+						clientId={ props.clientId }
+						attributes={ props.attributes }
+						setAttributes={ props.setAttributes }
+					/>
+				</Suspense>
 			</>
 		);
 	},
