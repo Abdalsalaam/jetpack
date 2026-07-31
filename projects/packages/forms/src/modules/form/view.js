@@ -13,7 +13,7 @@ import {
  */
 import { validateField, isEmptyValue } from '../../contact-form/js/validate-helper.js';
 import { getRating } from '../field-rating/view.js';
-import { resolveFormVisibility } from './conditional-visibility.js';
+import { isFieldHiddenByLogic, resolveFormVisibility } from './conditional-visibility.js';
 import { maybeAddColonToLabel, maybeTransformValue, getImages, getUrl } from './helpers.js';
 import { focusNextInput, submitForm } from './shared.ts';
 // Import field type icons view to register its callbacks.
@@ -310,7 +310,9 @@ const { state, actions } = store( NAMESPACE, {
 				return false;
 			}
 
-			return ! Object.values( context.fields ).some( field => ! isEmptyValue( field.value ) );
+			return ! Object.values( context.fields ).some(
+				field => ! isEmptyValue( field.value ) && ! isFieldHiddenByLogic( context, field.id )
+			);
 		},
 
 		get isStepActive() {
@@ -380,13 +382,21 @@ const { state, actions } = store( NAMESPACE, {
 				return false;
 			}
 			const context = getContext();
+			// A field hidden by conditional logic is skipped: the visitor cannot see it, so an
+			// error against it would block submission with nothing on screen to explain why.
+			// The server re-checks visibility and drops the same fields before validating.
 			if ( context.isMultiStep ) {
 				// For multistep forms, we only validate fields that are part of the current step.
 				return ! Object.values( context.fields ).some(
-					field => field.error !== 'yes' && field.step === context.currentStep
+					field =>
+						field.error !== 'yes' &&
+						field.step === context.currentStep &&
+						! isFieldHiddenByLogic( context, field.id )
 				);
 			}
-			return ! Object.values( context.fields ).some( field => field.error !== 'yes' );
+			return ! Object.values( context.fields ).some(
+				field => field.error !== 'yes' && ! isFieldHiddenByLogic( context, field.id )
+			);
 		},
 
 		get showFormErrors() {
@@ -429,6 +439,9 @@ const { state, actions } = store( NAMESPACE, {
 			if ( context.showErrors ) {
 				Object.values( context.fields ).forEach( field => {
 					if ( context.isMultiStep && field.step !== context.currentStep ) {
+						return;
+					}
+					if ( isFieldHiddenByLogic( context, field.id ) ) {
 						return;
 					}
 					if ( field.error && field.error !== 'yes' ) {

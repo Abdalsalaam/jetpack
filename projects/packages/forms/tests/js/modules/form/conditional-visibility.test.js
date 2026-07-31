@@ -1,5 +1,6 @@
 import {
 	clearVisibilityMemo,
+	isFieldHiddenByLogic,
 	resolveFormVisibility,
 } from '../../../../src/modules/form/conditional-visibility.js';
 
@@ -184,5 +185,42 @@ describe( 'resolveFormVisibility', () => {
 		);
 
 		expect( visible.dependent ).toBe( true );
+	} );
+
+	describe( 'isFieldHiddenByLogic', () => {
+		const build = triggerValue =>
+			context( {
+				formHash: 'form-one',
+				types: { trigger: 'text', dependent: 'text' },
+				logic: { dependent: showWhen( 'trigger', 'Other' ) },
+				values: { trigger: triggerValue, dependent: '' },
+			} );
+
+		// The visitor cannot see or fill a hidden field, so client-side validation must not
+		// count an error against it — otherwise Submit silently stops working.
+		it( 'reports a field hidden by its condition', () => {
+			expect( isFieldHiddenByLogic( build( 'Nope' ), 'dependent' ) ).toBe( true );
+		} );
+
+		it( 'reports a shown field as not hidden', () => {
+			expect( isFieldHiddenByLogic( build( 'Other' ), 'dependent' ) ).toBe( false );
+		} );
+
+		it( 'reports an unconditional field as not hidden', () => {
+			expect( isFieldHiddenByLogic( build( 'Nope' ), 'trigger' ) ).toBe( false );
+		} );
+
+		it( 'reports nothing hidden when the form has no conditional logic', () => {
+			const plain = {
+				formHash: 'plain',
+				fields: { one: { value: '' } },
+			};
+
+			expect( isFieldHiddenByLogic( plain, 'one' ) ).toBe( false );
+		} );
+
+		it( 'reports an unknown field as not hidden', () => {
+			expect( isFieldHiddenByLogic( build( 'Nope' ), 'no-such-field' ) ).toBe( false );
+		} );
 	} );
 } );

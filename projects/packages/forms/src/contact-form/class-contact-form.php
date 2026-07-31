@@ -2583,12 +2583,22 @@ class Contact_Form extends Contact_Form_Shortcode {
 		) { // phpcs:enable
 			// If we're processing a POST submission for this contact form, validate the field value so we can show errors as necessary.
 			//
-			// Conditional logic is deliberately not consulted here. Fields are appended to
-			// $form->fields as they parse, so a visibility resolution at this point would run
-			// against an incomplete form and cache the wrong answer for validate() later. This
-			// call only decorates the rendered field with an error; whether the submission is
-			// accepted is decided by Contact_Form::validate(), which does skip hidden fields.
-			$field->validate();
+			// A field carrying conditional logic is skipped here. Whether it is visible depends
+			// on the answers to other fields, and fields are appended to $form->fields as they
+			// parse — at this point the form is still incomplete, so the question cannot be
+			// answered correctly. Validating anyway records an error against a field the visitor
+			// may never see, which leaves the form permanently unsubmittable: the error is real
+			// to has_errors(), but invisible on screen and impossible to clear.
+			//
+			// Contact_Form::validate() re-validates every field once the form is fully parsed,
+			// and skips the ones conditional logic resolves as hidden, so nothing is lost by
+			// deferring: a visible field still gets its error, just a moment later.
+			$defer_to_full_form_validation = Jetpack_Forms::is_conditional_logic_enabled()
+				&& $field->has_conditional_logic();
+
+			if ( ! $defer_to_full_form_validation ) {
+				$field->validate();
+			}
 		}
 
 		// Output HTML

@@ -72,3 +72,21 @@ export const resolveFormVisibility = context => {
 
 	return map;
 };
+
+/**
+ * Whether a field is currently hidden by conditional logic.
+ *
+ * Validation has to agree with what is on screen. A required field the visitor cannot see is
+ * one they cannot fill, so counting its error would block the form with nothing to explain
+ * why — the submit button simply stops working. The server drops the same fields before
+ * validating, so skipping them here keeps the two sides in step.
+ *
+ * @param {object} context - The interactivity context.
+ * @param {string} fieldId - The field's id.
+ * @return {boolean} True when conditional logic hides the field.
+ */
+export const isFieldHiddenByLogic = ( context, fieldId ) => {
+	const visibility = resolveFormVisibility( context );
+
+	return !! visibility && false === visibility[ fieldId ];
+};

@@ -322,6 +322,20 @@ class Contact_Form_Field extends Contact_Form_Shortcode {
 	/**
 	 * Validates the form input
 	 */
+	/**
+	 * Whether this field's visibility is governed by conditional logic.
+	 *
+	 * @return bool True when the field carries an enabled conditional-logic config.
+	 */
+	public function has_conditional_logic() {
+		$logic = $this->get_attribute( 'conditionallogic' );
+
+		return is_array( $logic ) && ! empty( $logic['enabled'] );
+	}
+
+	/**
+	 * Validates the form input
+	 */
 	public function validate() {
 		// If the field is already invalid, don't validate it again.
 		if ( $this->is_error() ) {
