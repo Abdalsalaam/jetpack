@@ -7,6 +7,7 @@
 
 namespace Automattic\Jetpack\Forms;
 
+use Automattic\Jetpack\Feature_Flags\Feature_Flags;
 use Automattic\Jetpack\Forms\ContactForm\Feedback_Source;
 use Automattic\Jetpack\Forms\ContactForm\Util;
 use Automattic\Jetpack\Forms\Dashboard\Dashboard;
@@ -18,9 +19,36 @@ class Jetpack_Forms {
 	const PACKAGE_VERSION = '7.23.3';
 
 	/**
+	 * Name of the feature flag gating field conditional logic.
+	 */
+	const CONDITIONAL_LOGIC_FLAG = 'forms-conditional-logic';
+
+	/**
+	 * Register the package's feature flags.
+	 *
+	 * Registration is unconditional and happens as the package loads, so the full set stays
+	 * discoverable through `Feature_Flags::all()` and nothing can call `is_enabled()` on an
+	 * unregistered flag.
+	 *
+	 * @return void
+	 */
+	public static function register_feature_flags() {
+		Feature_Flags::register(
+			self::CONDITIONAL_LOGIC_FLAG,
+			array(
+				'default'     => false,
+				'description' => 'Show or hide a form field based on the answer to another field.',
+				'owner'       => 'jetpack-forms',
+			)
+		);
+	}
+
+	/**
 	 * Load the contact form module.
 	 */
 	public static function load_contact_form() {
+		self::register_feature_flags();
+
 		Util::init();
 
 		if ( self::is_feedback_dashboard_enabled() ) {
@@ -142,14 +170,7 @@ class Jetpack_Forms {
 	 * @return boolean
 	 */
 	public static function is_conditional_logic_enabled() {
-		/**
-		 * Whether to enable conditional logic on Jetpack form fields.
-		 *
-		 * @since $$next-version$$
-		 *
-		 * @param bool false Whether conditional logic should be enabled. Default false.
-		 */
-		return apply_filters( 'jetpack_forms_conditional_logic_enable', false );
+		return Feature_Flags::is_enabled( self::CONDITIONAL_LOGIC_FLAG );
 	}
 
 	/**

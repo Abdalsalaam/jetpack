@@ -11,6 +11,7 @@
 
 namespace Automattic\Jetpack\Forms\ContactForm;
 
+use Automattic\Jetpack\Feature_Flags\Feature_Flags;
 use Automattic\Jetpack\Forms\Jetpack_Forms;
 use PHPUnit\Framework\Attributes\CoversClass;
 use WorDBless\BaseTestCase;
@@ -22,7 +23,7 @@ use WorDBless\BaseTestCase;
 class Conditional_Logic_Feature_Flag_Test extends BaseTestCase {
 
 	protected function tear_down() {
-		remove_filter( 'jetpack_forms_conditional_logic_enable', '__return_true' );
+		remove_filter( 'jetpack_feature_flag_enabled_forms-conditional-logic', '__return_true' );
 		parent::tear_down();
 		unset( $_POST );
 	}
@@ -87,6 +88,38 @@ class Conditional_Logic_Feature_Flag_Test extends BaseTestCase {
 		return $form;
 	}
 
+	/**
+	 * The flag is registered with the shared package, so it is discoverable through
+	 * `Feature_Flags::all()` and carries the metadata that says who owns it.
+	 */
+	public function test_the_flag_is_registered_with_the_feature_flags_package() {
+		Jetpack_Forms::register_feature_flags();
+
+		$definition = Feature_Flags::get( Jetpack_Forms::CONDITIONAL_LOGIC_FLAG );
+
+		$this->assertNotNull( $definition, 'The flag must be registered, not merely filtered.' );
+		$this->assertFalse( $definition['default'], 'It ships disabled.' );
+		$this->assertSame( 'jetpack-forms', $definition['owner'] );
+		$this->assertNotSame( '', $definition['description'] );
+	}
+
+	/**
+	 * The generic package filter controls it too, not just the per-flag variant, so a policy
+	 * layer can switch many flags from one place.
+	 */
+	public function test_the_generic_package_filter_turns_the_feature_on() {
+		Jetpack_Forms::register_feature_flags();
+
+		$callback = static function ( $enabled, $flag_name ) {
+			return Jetpack_Forms::CONDITIONAL_LOGIC_FLAG === $flag_name ? true : $enabled;
+		};
+		add_filter( 'jetpack_feature_flag_enabled', $callback, 10, 2 );
+
+		$this->assertTrue( Jetpack_Forms::is_conditional_logic_enabled() );
+
+		remove_filter( 'jetpack_feature_flag_enabled', $callback, 10 );
+	}
+
 	public function test_the_feature_is_off_by_default() {
 		$this->assertFalse(
 			Jetpack_Forms::is_conditional_logic_enabled(),
@@ -95,7 +128,7 @@ class Conditional_Logic_Feature_Flag_Test extends BaseTestCase {
 	}
 
 	public function test_the_filter_turns_the_feature_on() {
-		add_filter( 'jetpack_forms_conditional_logic_enable', '__return_true' );
+		add_filter( 'jetpack_feature_flag_enabled_forms-conditional-logic', '__return_true' );
 
 		$this->assertTrue( Jetpack_Forms::is_conditional_logic_enabled() );
 	}
@@ -156,7 +189,7 @@ class Conditional_Logic_Feature_Flag_Test extends BaseTestCase {
 	}
 
 	public function test_the_same_form_hides_the_field_once_the_flag_is_on() {
-		add_filter( 'jetpack_forms_conditional_logic_enable', '__return_true' );
+		add_filter( 'jetpack_feature_flag_enabled_forms-conditional-logic', '__return_true' );
 
 		$form = $this->build_form();
 

@@ -8,7 +8,9 @@ const FIELD_BLOCK_PREFIX = 'jetpack/field-';
 
 export const FILTER_NAMESPACE = 'jetpack/forms-conditional-logic';
 
-export const FEATURE_FLAG = 'form-conditional-logic';
+// Matches Jetpack_Forms::CONDITIONAL_LOGIC_FLAG, registered with the jetpack-feature-flags
+// package and bridged into the editor's feature-flag map.
+export const FEATURE_FLAG = 'forms-conditional-logic';
 
 /**
  * Whether a block should carry the conditional-logic panel.
