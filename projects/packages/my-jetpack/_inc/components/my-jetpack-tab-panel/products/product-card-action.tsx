@@ -3,7 +3,10 @@ import { __, sprintf } from '@wordpress/i18n';
 import { Badge } from '@wordpress/ui';
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { PRODUCTS_MUST_HAVE_A_STANDALONE_PLUGIN } from '../../../constants';
+import {
+	PRODUCTS_MUST_HAVE_A_STANDALONE_PLUGIN,
+	PRODUCTS_NEEDING_RELOAD_AFTER_TOGGLE,
+} from '../../../constants';
 import useActivatePlugins from '../../../data/products/use-activate-plugins';
 import { useDeactivatePlugins } from '../../../data/products/use-deactivate-plugins';
 import useProduct from '../../../data/products/use-product';
@@ -138,6 +141,7 @@ function ActivationToggle( {
  */
 export function ProductCardAction( { product, module: $module }: ProductCardActionProps ) {
 	const { data: interstitials } = useInterstitialsState();
+	const reloadOnToggle = PRODUCTS_NEEDING_RELOAD_AFTER_TOGGLE.includes( product.slug );
 
 	// Forms and AI surface the activation toggle directly instead of a "Learn more"
 	// upsell link. Forms is a free module with no interstitial; AI is the site-wide
@@ -155,7 +159,7 @@ export function ProductCardAction( { product, module: $module }: ProductCardActi
 				product={ product }
 				active={ isActive }
 				disabled={ ! $module?.available }
-				reloadOnToggle
+				reloadOnToggle={ reloadOnToggle }
 			/>
 		);
 	}
@@ -173,6 +177,7 @@ export function ProductCardAction( { product, module: $module }: ProductCardActi
 			<ActivationToggle
 				product={ product }
 				active={ product.standalonePluginInfo.isStandaloneActive }
+				reloadOnToggle={ reloadOnToggle }
 			/>
 		);
 	}
@@ -187,6 +192,12 @@ export function ProductCardAction( { product, module: $module }: ProductCardActi
 			return <UpgradeAction product={ product } />;
 
 		default:
-			return <ActivationToggle product={ product } disabled={ ! $module?.available } />;
+			return (
+				<ActivationToggle
+					product={ product }
+					disabled={ ! $module?.available }
+					reloadOnToggle={ reloadOnToggle }
+				/>
+			);
 	}
 }
