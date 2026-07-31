@@ -178,6 +178,27 @@ class Conditional_Logic_Initial_Render_Test extends BaseTestCase {
 		);
 	}
 
+	/**
+	 * The transition is scoped to [data-jp-conditional] so only fields that actually carry a
+	 * condition animate; everything else renders with no animation cost at all.
+	 */
+	public function test_only_conditional_fields_carry_the_animation_marker() {
+		$body = $this->render_body();
+
+		$processor = new \WP_HTML_Tag_Processor( $body );
+		$marked    = array();
+
+		while ( $processor->next_tag( array( 'tag_name' => 'DIV' ) ) ) {
+			$field_id = $processor->get_attribute( 'data-jp-field-id' );
+
+			if ( null !== $field_id && null !== $processor->get_attribute( 'data-jp-conditional' ) ) {
+				$marked[] = $field_id;
+			}
+		}
+
+		$this->assertSame( array( 'dependent' ), $marked );
+	}
+
 	public function test_nothing_is_marked_when_the_feature_is_off() {
 		remove_filter( 'jetpack_feature_flag_enabled_forms-conditional-logic', '__return_true' );
 
