@@ -597,6 +597,56 @@ class Contact_Form extends Contact_Form_Shortcode {
 
 		// $this->body and $this->fields have been setup.  We no longer need the contact-field shortcode.
 		Contact_Form_Plugin::$using_contact_form_field = false;
+
+		$this->apply_initial_field_visibility();
+	}
+
+	/**
+	 * Mark conditionally hidden fields as hidden in the rendered markup.
+	 *
+	 * Without this the server sends every field visible and the browser hides them once the
+	 * interactivity store hydrates, so the visitor sees the hidden fields flash on screen
+	 * first. The class applied here is the same one the client toggles, so the first paint
+	 * already matches what the client will compute and nothing moves.
+	 *
+	 * This runs after the whole form is parsed. It cannot happen while fields render: they
+	 * are parsed one at a time, so a rule referring to a field further down the form would be
+	 * resolved against a form that does not exist yet.
+	 *
+	 * @return void
+	 */
+	private function apply_initial_field_visibility() {
+		if ( empty( $this->body ) || ! Jetpack_Forms::is_conditional_logic_enabled() ) {
+			return;
+		}
+
+		// Deliberately not get_resolved_field_visibility(): that caches for the submission, and
+		// this runs while the form is still being built. Seeding the cache here would hand a
+		// render-time answer to validation and storage later on.
+		$visibility = $this->compute_field_visibility();
+		$hidden     = array();
+
+		foreach ( $visibility as $field_id => $is_visible ) {
+			if ( false === $is_visible ) {
+				$hidden[ $field_id ] = true;
+			}
+		}
+
+		if ( empty( $hidden ) ) {
+			return;
+		}
+
+		$processor = new \WP_HTML_Tag_Processor( $this->body );
+
+		while ( $processor->next_tag( array( 'tag_name' => 'DIV' ) ) ) {
+			$field_id = $processor->get_attribute( 'data-jp-field-id' );
+
+			if ( null !== $field_id && isset( $hidden[ $field_id ] ) ) {
+				$processor->add_class( 'jetpack-field--conditionally-hidden' );
+			}
+		}
+
+		$this->body = $processor->get_updated_html();
 	}
 	/**
 	 * Get the instance of the contact form from a JWT token.
@@ -3863,6 +3913,25 @@ class Contact_Form extends Contact_Form_Shortcode {
 			return $this->resolved_field_visibility;
 		}
 
+		$this->resolved_field_visibility = $this->compute_field_visibility();
+
+		return $this->resolved_field_visibility;
+	}
+
+	/**
+	 * Resolve which fields are visible, without caching.
+	 *
+	 * @return array Map of field id to bool visibility.
+	 */
+	private function compute_field_visibility() {
+		if ( ! Jetpack_Forms::is_conditional_logic_enabled() ) {
+			return array();
+		}
+
+		if ( ! is_array( $this->fields ) || empty( $this->fields ) ) {
+			return array();
+		}
+
 		$descriptors = array();
 		$values      = array();
 
@@ -3872,24 +3941,18 @@ class Contact_Form extends Contact_Form_Shortcode {
 				'type'  => $field->get_attribute( 'type' ),
 			);
 
-			// Read the submitted value the same way Contact_Form_Field::validate() does.
-			// Resolving against $field->value instead would evaluate every rule against an
-			// empty form, because the property is not populated from the request.
-			$post_key = $field->get_attribute( 'id' );
-			if ( isset( $_POST[ $post_key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- read-only; nonce verification happens in the caller.
-				if ( is_array( $_POST[ $post_key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- read-only; nonce verification happens in the caller.
-					$values[ $field_id ] = array_map( 'sanitize_text_field', wp_unslash( $_POST[ $post_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- read-only; nonce verification happens in the caller.
-				} else {
-					$values[ $field_id ] = sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- read-only; nonce verification happens in the caller.
-				}
-			} else {
-				$values[ $field_id ] = $field->value;
-			}
+			// Resolve the value exactly as the field itself does when rendering: submitted
+			// value first, then a `?field_id=value` query parameter, then the configured
+			// default, then the logged-in user's details. Reading $_POST alone would make a
+			// prefilled form resolve against an empty one, so a field the visitor can already
+			// see satisfying a condition would render hidden and then flash into view.
+			$values[ $field_id ] = $field->get_computed_field_value(
+				$field->get_attribute( 'type' ),
+				$field->get_attribute( 'id' )
+			);
 		}
 
-		$this->resolved_field_visibility = Conditional_Logic::resolve_visibility( $descriptors, $values );
-
-		return $this->resolved_field_visibility;
+		return Conditional_Logic::resolve_visibility( $descriptors, $values );
 	}
 
 	/**
