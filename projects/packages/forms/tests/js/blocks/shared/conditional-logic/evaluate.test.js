@@ -14,7 +14,7 @@ const logic = ( rules, extra = {} ) => ( {
 const one = ( operator, value, field = 'a' ) => logic( [ { field, operator, value } ] );
 
 describe( 'evaluateLogic — string operators', () => {
-	const types = { a: 'string' };
+	const types = { a: 'text' };
 
 	it.each( [
 		[ 'is', 'yes', 'yes', true ],
@@ -41,7 +41,7 @@ describe( 'evaluateLogic — string operators', () => {
 } );
 
 describe( 'evaluateLogic — multiple choice uses membership', () => {
-	const types = { a: 'multichoice' };
+	const types = { a: 'checkbox-multiple' };
 
 	it( 'does not match a longer option that merely contains the value', () => {
 		expect( evaluateLogic( one( 'contains', 'Blue' ), types, { a: [ 'Blueberry' ] } ) ).toBe(
@@ -84,7 +84,7 @@ describe( 'evaluateLogic — multiple choice uses membership', () => {
 } );
 
 describe( 'evaluateLogic — choice operators', () => {
-	const types = { a: 'choice' };
+	const types = { a: 'select' };
 
 	it( 'compares the whole selected option', () => {
 		expect( evaluateLogic( one( 'is', 'Blue' ), types, { a: 'Blue' } ) ).toBe( true );
@@ -159,7 +159,7 @@ describe( 'evaluateLogic — date and time operators', () => {
 } );
 
 describe( 'evaluateLogic — boolean operators', () => {
-	const types = { a: 'boolean' };
+	const types = { a: 'checkbox' };
 
 	it.each( [
 		[ 'is_checked', true, true ],
@@ -176,7 +176,7 @@ describe( 'evaluateLogic — boolean operators', () => {
 } );
 
 describe( 'evaluateLogic — combination, action, and ignored rules', () => {
-	const types = { a: 'string', b: 'string' };
+	const types = { a: 'text', b: 'text' };
 	const twoRules = [
 		{ field: 'a', operator: 'is', value: 'x' },
 		{ field: 'b', operator: 'is', value: 'y' },
@@ -247,9 +247,9 @@ describe( 'evaluateLogic — combination, action, and ignored rules', () => {
 
 describe( 'resolveVisibility — cascade', () => {
 	const chain = () => ( {
-		a: { logic: null, type: 'string' },
-		b: { logic: one( 'is', 'Other' ), type: 'string' },
-		c: { logic: logic( [ { field: 'b', operator: 'is_not_empty' } ] ), type: 'string' },
+		a: { logic: null, type: 'text' },
+		b: { logic: one( 'is', 'Other' ), type: 'text' },
+		c: { logic: logic( [ { field: 'b', operator: 'is_not_empty' } ] ), type: 'text' },
 	} );
 
 	it( 'treats a hidden field as empty for downstream rules', () => {
@@ -269,8 +269,8 @@ describe( 'resolveVisibility — cascade', () => {
 
 	it( 'fails open on a two-field cycle', () => {
 		const fields = {
-			a: { logic: logic( [ { field: 'b', operator: 'is_empty' } ] ), type: 'string' },
-			b: { logic: logic( [ { field: 'a', operator: 'is_not_empty' } ] ), type: 'string' },
+			a: { logic: logic( [ { field: 'b', operator: 'is_empty' } ] ), type: 'text' },
+			b: { logic: logic( [ { field: 'a', operator: 'is_not_empty' } ] ), type: 'text' },
 		};
 		const visible = resolveVisibility( fields, { a: 'x', b: 'y' } );
 		expect( visible.a ).toBe( true );
@@ -279,25 +279,25 @@ describe( 'resolveVisibility — cascade', () => {
 
 	it( 'fails open on self-reference', () => {
 		const fields = {
-			a: { logic: logic( [ { field: 'a', operator: 'is_empty' } ] ), type: 'string' },
+			a: { logic: logic( [ { field: 'a', operator: 'is_empty' } ] ), type: 'text' },
 		};
 		expect( resolveVisibility( fields, { a: 'x' } ).a ).toBe( true );
 	} );
 
 	it( 'marks every field visible when none has logic', () => {
 		const fields = {
-			a: { logic: null, type: 'string' },
-			b: { logic: null, type: 'string' },
+			a: { logic: null, type: 'text' },
+			b: { logic: null, type: 'text' },
 		};
 		expect( resolveVisibility( fields, {} ) ).toEqual( { a: true, b: true } );
 	} );
 
 	it( 'resolves a three-deep chain in one call', () => {
 		const fields = {
-			a: { logic: null, type: 'string' },
-			b: { logic: one( 'is', 'go' ), type: 'string' },
-			c: { logic: logic( [ { field: 'b', operator: 'is_not_empty' } ] ), type: 'string' },
-			d: { logic: logic( [ { field: 'c', operator: 'is_not_empty' } ] ), type: 'string' },
+			a: { logic: null, type: 'text' },
+			b: { logic: one( 'is', 'go' ), type: 'text' },
+			c: { logic: logic( [ { field: 'b', operator: 'is_not_empty' } ] ), type: 'text' },
+			d: { logic: logic( [ { field: 'c', operator: 'is_not_empty' } ] ), type: 'text' },
 		};
 		const visible = resolveVisibility( fields, { a: 'go', b: 'x', c: 'y', d: '' } );
 		expect( visible ).toEqual( { a: true, b: true, c: true, d: true } );

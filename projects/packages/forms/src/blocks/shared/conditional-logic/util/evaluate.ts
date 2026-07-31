@@ -7,7 +7,7 @@
  * Conditional_Logic_Parity_Test guards the operator vocabulary.
  */
 
-import { OPERATORS, operatorNeedsValue } from './field-types';
+import { OPERATORS, getTypeKeyForFieldType, operatorNeedsValue } from './field-types';
 import type { Operator, TypeKey } from './field-types';
 
 /**
@@ -35,7 +35,13 @@ export type FormValues = Record< string, unknown >;
 
 export type FieldDescriptor = {
 	logic: ConditionalLogic | null;
-	type: TypeKey;
+	/**
+	 * The field's shortcode `type`, e.g. `checkbox-multiple` — not a TypeKey.
+	 *
+	 * Deliberately the same vocabulary the PHP evaluator takes, so the two mirrors accept
+	 * identical inputs and a fix can be ported between them without translating arguments.
+	 */
+	type: string;
 };
 
 /**
@@ -273,13 +279,13 @@ const evaluateRuleValue = ( rule: Rule, typeKey: TypeKey, actual: unknown ): boo
  * When every rule is ignored the field stays visible.
  *
  * @param logic      - The field's conditional-logic config.
- * @param fieldTypes - Map of field id to comparison behavior for every field in the form.
+ * @param fieldTypes - Map of field id to shortcode field type, for every field in the form.
  * @param values     - Map of field id to current value.
  * @return True when the field should be visible.
  */
 export const evaluateLogic = (
 	logic: ConditionalLogic | null | undefined,
-	fieldTypes: Record< string, TypeKey >,
+	fieldTypes: Record< string, string >,
 	values: FormValues
 ): boolean => {
 	if ( ! logic || ! logic.enabled ) {
@@ -296,10 +302,10 @@ export const evaluateLogic = (
 		if ( ! rule || ! rule.field || ! rule.operator ) {
 			return;
 		}
-		const typeKey = fieldTypes[ rule.field ];
-		if ( ! typeKey ) {
+		if ( ! ( rule.field in fieldTypes ) ) {
 			return; // Subject field no longer exists — ignore this rule.
 		}
+		const typeKey = getTypeKeyForFieldType( fieldTypes[ rule.field ] );
 		const outcome = evaluateRuleValue( rule, typeKey, values[ rule.field ] );
 		if ( outcome !== null ) {
 			outcomes.push( outcome );
@@ -343,7 +349,7 @@ export const resolveVisibility = (
 		return visible;
 	}
 
-	const fieldTypes: Record< string, TypeKey > = {};
+	const fieldTypes: Record< string, string > = {};
 	ids.forEach( id => {
 		fieldTypes[ id ] = fields[ id ].type;
 	} );
