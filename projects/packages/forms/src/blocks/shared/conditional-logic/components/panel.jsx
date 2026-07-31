@@ -2,6 +2,7 @@ import { InspectorControls } from '@wordpress/block-editor';
 import { PanelBody, SelectControl } from '@wordpress/components';
 import { useCallback, useMemo } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import { Stack, Text } from '@wordpress/ui';
 import { normalizeLogic } from '../constants.js';
 import { CONTROLS } from '../controls/index.js';
 import useSubjectFields from '../hooks/use-subject-fields.js';
@@ -89,7 +90,12 @@ const ConditionalLogicPanel = ( { clientId, attributes, setAttributes } ) => {
 			>
 				{ hasConditions ? (
 					<>
-						<div className="jetpack-contact-form__conditional-logic-summary">
+						<Stack
+							direction="row"
+							align="flex-start"
+							gap="sm"
+							className="jetpack-contact-form__conditional-logic-summary"
+						>
 							<SelectControl
 								label={ __( 'Action', 'jetpack-forms' ) }
 								hideLabelFromVision
@@ -108,18 +114,18 @@ const ConditionalLogicPanel = ( { clientId, attributes, setAttributes } ) => {
 								__nextHasNoMarginBottom={ true }
 								__next40pxDefaultSize={ true }
 							/>
-						</div>
-						<p className="jetpack-contact-form__conditional-logic-hint">
+						</Stack>
+						<Text variant="body-sm" className="jetpack-contact-form__conditional-logic-hint">
 							{ __( 'of the following conditions are met:', 'jetpack-forms' ) }
-						</p>
+						</Text>
 					</>
 				) : (
-					<p className="jetpack-contact-form__conditional-logic-intro">
+					<Text variant="body-sm" className="jetpack-contact-form__conditional-logic-intro">
 						{ __(
 							'Show or hide this field based on the answer to another field.',
 							'jetpack-forms'
 						) }
-					</p>
+					</Text>
 				) }
 
 				{ CONTROLS.map( control => {

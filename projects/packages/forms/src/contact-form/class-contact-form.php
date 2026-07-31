@@ -613,9 +613,11 @@ class Contact_Form extends Contact_Form_Shortcode {
 	 * are parsed one at a time, so a rule referring to a field further down the form would be
 	 * resolved against a form that does not exist yet.
 	 *
+	 * Public so it can be exercised directly; it is idempotent and safe to call again.
+	 *
 	 * @return void
 	 */
-	private function apply_initial_field_visibility() {
+	public function apply_initial_field_visibility() {
 		if ( empty( $this->body ) || ! Jetpack_Forms::is_conditional_logic_enabled() ) {
 			return;
 		}

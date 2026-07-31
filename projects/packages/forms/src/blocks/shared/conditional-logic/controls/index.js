@@ -18,7 +18,7 @@ import FieldValueControl from './field-value/edit.jsx';
 export const CONTROLS = [
 	{
 		slug: 'fieldValue',
-		label: __( 'Field Value', 'jetpack-forms' ),
+		label: __( 'Field value', 'jetpack-forms' ),
 		defaultValue: { rules: [] },
 		Edit: FieldValueControl,
 	},

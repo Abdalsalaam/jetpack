@@ -91,9 +91,7 @@ class Conditional_Logic_Initial_Render_Test extends BaseTestCase {
 
 		$form->body = $trigger->render() . $dependent->render();
 
-		$reflection = new \ReflectionMethod( $form, 'apply_initial_field_visibility' );
-		$reflection->setAccessible( true );
-		$reflection->invoke( $form );
+		$form->apply_initial_field_visibility();
 
 		return (string) $form->body;
 	}

@@ -1,7 +1,8 @@
-import { Button, Notice, SelectControl, TextControl } from '@wordpress/components';
+import { Notice, SelectControl, TextControl } from '@wordpress/components';
 import { useCallback, useMemo } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { closeSmall, plus } from '@wordpress/icons';
+import { Button, IconButton, Stack, Text } from '@wordpress/ui';
 import { useEnsureFieldId } from '../../hooks/use-subject-fields.js';
 import {
 	OPERATORS,
@@ -201,16 +202,24 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 
 	return (
 		<div className="jetpack-contact-form__conditional-logic-rule">
-			<div className="jetpack-contact-form__conditional-logic-rule-header">
-				<span className="jetpack-contact-form__conditional-logic-rule-title">
+			<Stack
+				direction="row"
+				align="center"
+				justify="space-between"
+				gap="sm"
+				className="jetpack-contact-form__conditional-logic-rule-header"
+			>
+				<Text variant="body-sm" className="jetpack-contact-form__conditional-logic-rule-title">
 					{ sprintf(
 						/* translators: %d: condition number, starting at 1 */
 						__( 'Condition %d', 'jetpack-forms' ),
 						index + 1
 					) }
-				</span>
-				<Button
+				</Text>
+				<IconButton
 					size="small"
+					variant="minimal"
+					tone="neutral"
 					icon={ closeSmall }
 					onClick={ handleRemove }
 					label={ sprintf(
@@ -219,7 +228,7 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 						index + 1
 					) }
 				/>
-			</div>
+			</Stack>
 
 			{ missingSubject && (
 				<Notice status="warning" isDismissible={ false }>
@@ -230,7 +239,7 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 				</Notice>
 			) }
 
-			<div className="jetpack-contact-form__conditional-logic-rule-body">
+			<Stack gap="sm" className="jetpack-contact-form__conditional-logic-rule-body">
 				<SelectControl
 					label={ __( 'Field', 'jetpack-forms' ) }
 					hideLabelFromVision
@@ -265,7 +274,7 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 				/>
 
 				<RuleValueControl rule={ rule } subject={ subject } onChange={ handleValueChange } />
-			</div>
+			</Stack>
 		</div>
 	);
 };
@@ -318,7 +327,7 @@ const FieldValueControl = ( { value, onChange, fields } ) => {
 	}
 
 	return (
-		<div className="jetpack-contact-form__conditional-logic-control">
+		<Stack gap="md" className="jetpack-contact-form__conditional-logic-control">
 			{ rules.map( ( rule, index ) => (
 				<RuleRow
 					key={ index }
@@ -334,14 +343,15 @@ const FieldValueControl = ( { value, onChange, fields } ) => {
 			     land (query string, user role, date and time) this becomes the menu that
 			     offers the choice, so it stays the panel's one primary action. */ }
 			<Button
-				variant="secondary"
+				variant="outline"
+				tone="neutral"
 				icon={ plus }
 				onClick={ addRule }
 				className="jetpack-contact-form__conditional-logic-add"
 			>
 				{ __( 'Add condition', 'jetpack-forms' ) }
 			</Button>
-		</div>
+		</Stack>
 	);
 };
 

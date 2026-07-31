@@ -1,41 +1,43 @@
 /**
  * Conditional logic inspector panel.
  *
- * The sidebar is narrow, so the panel leans on vertical
- * rhythm rather than horizontal arrangement: one control
- * per line, conditions grouped into cards, and a single
- * primary action at the end. Logical properties throughout
- * so the panel mirrors correctly in RTL.
+ * Layout and typography come from the design system:
+ * Stack handles the flex arrangement and spacing, Text
+ * handles the prose. What is left here is what those
+ * components do not express — the card chrome and the
+ * proportional split of the two summary selectors — and
+ * it uses wpds tokens rather than literal values.
  */
 
 .jetpack-contact-form__conditional-logic {
 
-	.jetpack-contact-form__conditional-logic-intro {
-		margin-block: 0 16px;
-		color: #757575;
-		font-size: 12px;
-		line-height: 1.5;
+	.jetpack-contact-form__conditional-logic-intro,
+	.jetpack-contact-form__conditional-logic-hint {
+		display: block;
+		color: var(--wpds-color-foreground-content-neutral-weak);
 	}
 
-	// Both selectors on one row, with the sentence they belong
-	// to underneath rather than interleaved: text fragments
-	// either side of a control wrap badly at sidebar widths.
-	.jetpack-contact-form__conditional-logic-summary {
-		display: flex;
-		flex-direction: row;
-		align-items: flex-start;
-		gap: 8px;
+	.jetpack-contact-form__conditional-logic-intro {
+		margin-block-end: var(--wpds-dimension-gap-lg);
+	}
 
-		// BaseControl still applies a bottom margin here even
-		// with __nextHasNoMarginBottom, which pushed the two
-		// selectors out of line with each other.
+	.jetpack-contact-form__conditional-logic-hint {
+		margin-block: var(--wpds-dimension-gap-sm) var(--wpds-dimension-gap-lg);
+	}
+
+	// Show/hide carries the longer label, so it gets the
+	// extra room instead of splitting the row evenly.
+	.jetpack-contact-form__conditional-logic-summary {
+
+		// Both selectors pass __nextHasNoMarginBottom, but
+		// BaseControl still emits a bottom margin here, which
+		// left the two boxes visibly out of line. Dropping it
+		// is what makes the row sit flush.
 		.components-base-control,
 		.components-base-control__field {
 			margin-block-end: 0;
 		}
 
-		// Show/hide carries the longer label, so give it the
-		// extra room instead of splitting the row evenly.
 		> *:first-child {
 			flex: 3 1 0;
 			min-width: 0;
@@ -47,48 +49,25 @@
 		}
 	}
 
-	.jetpack-contact-form__conditional-logic-hint {
-		margin-block: 8px 16px;
-		color: #757575;
-		font-size: 12px;
-		line-height: 1.5;
-	}
-
-	.jetpack-contact-form__conditional-logic-control {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-
-	// One card per condition, so multiple conditions read as
-	// a list instead of an undifferentiated stack of selects.
+	// One card per condition, so several conditions read
+	// as a list rather than an undifferentiated stack of
+	// selects.
 	.jetpack-contact-form__conditional-logic-rule {
-		padding: 12px;
-		border: 1px solid #e0e0e0;
-		border-radius: 4px;
-		background: #fff;
+		padding: var(--wpds-dimension-padding-md);
+		border:
+			var(--wpds-border-width-xs) solid
+			var(--wpds-color-stroke-surface-neutral-weak);
+		border-radius: var(--wpds-border-radius-sm);
 	}
 
 	.jetpack-contact-form__conditional-logic-rule-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 8px;
-		margin-block-end: 8px;
+		margin-block-end: var(--wpds-dimension-gap-sm);
 	}
 
 	.jetpack-contact-form__conditional-logic-rule-title {
-		color: #757575;
-		font-size: 11px;
-		font-weight: 500;
+		color: var(--wpds-color-foreground-content-neutral-weak);
 		text-transform: uppercase;
 		letter-spacing: 0.5px;
-	}
-
-	.jetpack-contact-form__conditional-logic-rule-body {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
 	}
 
 	.jetpack-contact-form__conditional-logic-add {
