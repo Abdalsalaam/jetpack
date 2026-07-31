@@ -63,37 +63,6 @@ const OPERATORS_WITHOUT_VALUE: Set< string > = new Set( [
 ] );
 
 /**
- * Editor-side lookup: block name to comparison behavior.
- *
- * The front end and the submission handler see shortcode `type` strings instead, mapped
- * by `Conditional_Logic::TYPE_KEY_BY_FIELD_TYPE`; the two tables must stay aligned.
- */
-export const TYPE_KEY_BY_BLOCK_NAME: Record< string, TypeKey > = {
-	'jetpack/field-text': 'string',
-	'jetpack/field-name': 'string',
-	'jetpack/field-email': 'string',
-	'jetpack/field-url': 'string',
-	'jetpack/field-textarea': 'string',
-	'jetpack/field-telephone': 'string',
-	'jetpack/field-select': 'choice',
-	// Registered names, which do not always match the directory: the blocks in
-	// field-single-choice/ and field-multiple-choice/ register as `field-radio` and
-	// `field-checkbox-multiple`. block-names.test.js checks this table against the source.
-	'jetpack/field-radio': 'choice',
-	'jetpack/field-image-select': 'choice',
-	'jetpack/field-checkbox-multiple': 'multichoice',
-	'jetpack/field-number': 'number',
-	'jetpack/field-slider': 'number',
-	'jetpack/field-rating': 'number',
-	'jetpack/field-date': 'date',
-	'jetpack/field-time': 'time',
-	'jetpack/field-checkbox': 'boolean',
-	'jetpack/field-consent': 'boolean',
-	'jetpack/field-hidden': 'hidden',
-	'jetpack/field-file': 'file',
-};
-
-/**
  * Front-end and submission-side lookup: shortcode `type` to comparison behavior.
  *
  * Fields flatten to `[contact-field type="…"]` before rendering, so the browser runtime and
@@ -169,19 +138,6 @@ const VALUE_INPUT_BY_TYPE_KEY: Record< TypeKey, ValueInputKind > = {
 	boolean: 'none',
 	hidden: 'text',
 	file: 'none',
-};
-
-/**
- * Resolve a block name to its comparison behavior.
- *
- * @param blockName - Fully qualified block name, e.g. `jetpack/field-select`.
- * @return The type key, or null when the block is not a conditional-logic-capable field.
- */
-export const getTypeKeyForBlockName = ( blockName?: string ): TypeKey | null => {
-	if ( ! blockName ) {
-		return null;
-	}
-	return TYPE_KEY_BY_BLOCK_NAME[ blockName ] ?? null;
 };
 
 /**

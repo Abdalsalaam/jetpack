@@ -1,32 +1,27 @@
 import {
 	OPERATORS,
-	getTypeKeyForBlockName,
 	getOperatorsForTypeKey,
 	getValueInputForTypeKey,
 	operatorNeedsValue,
 } from '../../../../../src/blocks/shared/conditional-logic/util/field-types';
 
-// One row per jetpack field block: [ block name, type key, value input kind ].
+/**
+ * One row per comparison behavior: [ type key, value input kind ].
+ *
+ * Which block declares which type key is not asserted here — the blocks own that, and
+ * block-names.test.js checks it against their source. This file covers what the type key
+ * itself buys you: the operator set and the value input the rule builder renders.
+ */
 const CASES = [
-	[ 'jetpack/field-text', 'string', 'text' ],
-	[ 'jetpack/field-name', 'string', 'text' ],
-	[ 'jetpack/field-email', 'string', 'text' ],
-	[ 'jetpack/field-url', 'string', 'text' ],
-	[ 'jetpack/field-textarea', 'string', 'text' ],
-	[ 'jetpack/field-telephone', 'string', 'text' ],
-	[ 'jetpack/field-select', 'choice', 'options' ],
-	[ 'jetpack/field-radio', 'choice', 'options' ],
-	[ 'jetpack/field-image-select', 'choice', 'options' ],
-	[ 'jetpack/field-checkbox-multiple', 'multichoice', 'options' ],
-	[ 'jetpack/field-number', 'number', 'number' ],
-	[ 'jetpack/field-slider', 'number', 'number' ],
-	[ 'jetpack/field-rating', 'number', 'number' ],
-	[ 'jetpack/field-date', 'date', 'date' ],
-	[ 'jetpack/field-time', 'time', 'time' ],
-	[ 'jetpack/field-checkbox', 'boolean', 'none' ],
-	[ 'jetpack/field-consent', 'boolean', 'none' ],
-	[ 'jetpack/field-hidden', 'hidden', 'text' ],
-	[ 'jetpack/field-file', 'file', 'none' ],
+	[ 'string', 'text' ],
+	[ 'choice', 'options' ],
+	[ 'multichoice', 'options' ],
+	[ 'number', 'number' ],
+	[ 'date', 'date' ],
+	[ 'time', 'time' ],
+	[ 'boolean', 'none' ],
+	[ 'hidden', 'text' ],
+	[ 'file', 'none' ],
 ];
 
 const EXPECTED_OPERATORS = {
@@ -51,25 +46,18 @@ const EXPECTED_OPERATORS = {
 };
 
 describe( 'field-types', () => {
-	it( 'covers every jetpack field block', () => {
-		expect( CASES ).toHaveLength( 19 );
+	it( 'covers every comparison behavior a block can declare', () => {
+		expect( CASES.map( ( [ typeKey ] ) => typeKey ).sort() ).toEqual(
+			Object.keys( EXPECTED_OPERATORS ).sort()
+		);
 	} );
 
-	it.each( CASES )( '%s maps to type key %s with a %s value input', ( name, typeKey, input ) => {
-		expect( getTypeKeyForBlockName( name ) ).toBe( typeKey );
+	it.each( CASES )( '%s renders a %s value input', ( typeKey, input ) => {
 		expect( getValueInputForTypeKey( typeKey ) ).toBe( input );
 	} );
 
-	it.each( CASES )( '%s exposes the operator set for %s', ( name, typeKey ) => {
+	it.each( CASES )( '%s exposes its operator set', typeKey => {
 		expect( getOperatorsForTypeKey( typeKey ) ).toEqual( EXPECTED_OPERATORS[ typeKey ] );
-	} );
-
-	it( 'returns null for blocks that are not fields', () => {
-		expect( getTypeKeyForBlockName( 'jetpack/input' ) ).toBeNull();
-		expect( getTypeKeyForBlockName( 'jetpack/contact-form' ) ).toBeNull();
-		expect( getTypeKeyForBlockName( 'jetpack/label' ) ).toBeNull();
-		expect( getTypeKeyForBlockName( 'core/paragraph' ) ).toBeNull();
-		expect( getTypeKeyForBlockName( undefined ) ).toBeNull();
 	} );
 
 	it( 'returns an empty operator list for an unknown type key', () => {

@@ -4,8 +4,8 @@ import { useDispatch, useSelect } from '@wordpress/data';
 import { useCallback } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { generateUniqueFormFieldId } from '../../util/generate-unique-id.js';
+import { getTypeKeyForBlockName } from '../util/block-types.js';
 import { getFieldOptions } from '../util/field-options.ts';
-import { getTypeKeyForBlockName } from '../util/field-types.ts';
 
 /**
  * Turn a field label into a candidate field id.

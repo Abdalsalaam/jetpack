@@ -2,7 +2,7 @@ import { hasFeatureFlag } from '@automattic/jetpack-shared-extension-utils';
 import { createHigherOrderComponent } from '@wordpress/compose';
 import { addFilter, hasFilter } from '@wordpress/hooks';
 import ConditionalLogicPanel from './components/panel.jsx';
-import { getTypeKeyForBlockName } from './util/field-types.ts';
+import { getTypeKeyForBlockName } from './util/block-types.js';
 
 const FIELD_BLOCK_PREFIX = 'jetpack/field-';
 

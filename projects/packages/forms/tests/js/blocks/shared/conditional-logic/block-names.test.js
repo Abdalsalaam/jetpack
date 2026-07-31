@@ -1,19 +1,20 @@
 import fs from 'fs';
 import path from 'path';
-import { TYPE_KEY_BY_BLOCK_NAME } from '../../../../../src/blocks/shared/conditional-logic/util/field-types';
+import { getOperatorsForTypeKey } from '../../../../../src/blocks/shared/conditional-logic/util/field-types';
 
 /**
- * Derive the block names from the source rather than from directory names.
+ * Every field block declares how its value is compared, beside `form_editor`.
  *
- * Regression guard: the mapping table was first written from directory names, which meant
- * field-single-choice/ and field-multiple-choice/ — registered as `jetpack/field-radio` and
- * `jetpack/field-checkbox-multiple` — had no entry, so those two field types silently got no
- * conditional-logic panel and could not be referenced by a condition. Hardcoding the list in
- * a test would have repeated the same wrong assumption, so this reads what is registered.
+ * This reads the block sources rather than restating the block list, for two reasons. A new
+ * field block that forgets the declaration is reported here instead of silently getting no
+ * conditional-logic support. And the registered name is taken from the block itself: two
+ * blocks register under a name that differs from their directory — `field-single-choice` as
+ * `jetpack/field-radio`, `field-multiple-choice` as `jetpack/field-checkbox-multiple` — and a
+ * hand-written table got both wrong, which is how both silently lost their panel once.
  */
 const BLOCKS_DIR = path.join( process.cwd(), 'src/blocks' );
 
-const registeredFieldBlockNames = () =>
+const readFieldBlocks = () =>
 	fs
 		.readdirSync( BLOCKS_DIR )
 		.filter( entry => entry.startsWith( 'field-' ) )
@@ -27,39 +28,63 @@ const registeredFieldBlockNames = () =>
 			}
 
 			const source = fs.readFileSync( path.join( BLOCKS_DIR, dir, indexFile ), 'utf8' );
-			const match = source.match( /^(?:export )?const name = '([^']+)'/m );
+			const name = source.match( /^(?:export )?const name = '([^']+)'/m );
+			const type = source.match( /export const conditional_logic = \{\s*type: '([a-z]+)'/m );
 
-			return match ? { dir, blockName: `jetpack/${ match[ 1 ] }` } : null;
+			return {
+				dir,
+				blockName: name ? `jetpack/${ name[ 1 ] }` : null,
+				type: type ? type[ 1 ] : null,
+				// Declared but not exported would leave it invisible to the lookup.
+				exported: /export default \{[^}]*conditional_logic/s.test( source ),
+			};
 		} )
 		.filter( Boolean );
 
-describe( 'field block name coverage', () => {
-	const blocks = registeredFieldBlockNames();
+// The expected comparison behavior of each field block, keyed by registered block name.
+const EXPECTED_TYPES = {
+	'jetpack/field-text': 'string',
+	'jetpack/field-name': 'string',
+	'jetpack/field-email': 'string',
+	'jetpack/field-url': 'string',
+	'jetpack/field-textarea': 'string',
+	'jetpack/field-telephone': 'string',
+	'jetpack/field-select': 'choice',
+	'jetpack/field-radio': 'choice',
+	'jetpack/field-image-select': 'choice',
+	'jetpack/field-checkbox-multiple': 'multichoice',
+	'jetpack/field-number': 'number',
+	'jetpack/field-slider': 'number',
+	'jetpack/field-rating': 'number',
+	'jetpack/field-date': 'date',
+	'jetpack/field-time': 'time',
+	'jetpack/field-checkbox': 'boolean',
+	'jetpack/field-consent': 'boolean',
+	'jetpack/field-hidden': 'hidden',
+	'jetpack/field-file': 'file',
+};
+
+describe( 'field block conditional-logic declarations', () => {
+	const blocks = readFieldBlocks();
 
 	it( 'finds every field block in the package', () => {
 		expect( blocks ).toHaveLength( 19 );
+		expect( Object.keys( EXPECTED_TYPES ) ).toHaveLength( 19 );
 	} );
 
-	it.each( blocks.map( block => [ block.dir, block.blockName ] ) )(
-		'%s registers as %s and has a conditional-logic type mapping',
-		( dir, blockName ) => {
-			expect( TYPE_KEY_BY_BLOCK_NAME[ blockName ] ).toBeDefined();
+	it( 'registers the block names the table expects', () => {
+		expect( blocks.map( block => block.blockName ).sort() ).toEqual(
+			Object.keys( EXPECTED_TYPES ).sort()
+		);
+	} );
+
+	it.each( readFieldBlocks().map( block => [ block.dir, block ] ) )(
+		'%s declares and exports its comparison behavior',
+		( dir, block ) => {
+			expect( block.type ).toBe( EXPECTED_TYPES[ block.blockName ] );
+			expect( block.exported ).toBe( true );
+			// The declared type must be one the rule builder can offer operators for.
+			expect( getOperatorsForTypeKey( block.type ).length ).toBeGreaterThan( 0 );
 		}
 	);
-
-	it( 'maps exactly the registered blocks, with no stale entries', () => {
-		const registered = blocks.map( block => block.blockName ).sort();
-		const mapped = Object.keys( TYPE_KEY_BY_BLOCK_NAME ).sort();
-
-		expect( mapped ).toEqual( registered );
-	} );
-
-	it( 'covers the two blocks whose registered name differs from their directory', () => {
-		const byDir = Object.fromEntries( blocks.map( block => [ block.dir, block.blockName ] ) );
-
-		expect( byDir[ 'field-single-choice' ] ).toBe( 'jetpack/field-radio' );
-		expect( byDir[ 'field-multiple-choice' ] ).toBe( 'jetpack/field-checkbox-multiple' );
-		expect( TYPE_KEY_BY_BLOCK_NAME[ 'jetpack/field-radio' ] ).toBe( 'choice' );
-		expect( TYPE_KEY_BY_BLOCK_NAME[ 'jetpack/field-checkbox-multiple' ] ).toBe( 'multichoice' );
-	} );
 } );

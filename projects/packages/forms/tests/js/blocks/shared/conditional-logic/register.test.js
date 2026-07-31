@@ -7,44 +7,40 @@ await jest.unstable_mockModule( '@automattic/jetpack-shared-extension-utils', ()
 	hasFeatureFlag: ( ...args ) => mockHasFeatureFlag( ...args ),
 } ) );
 
+/**
+ * A stand-in block registry.
+ *
+ * The lookup is built from the blocks themselves, so importing the real child-blocks module
+ * here would pull every block — and its editor dependencies — into this test just to answer a
+ * question about the guard. The stub keeps that question isolated: whether a block gets a
+ * panel follows from its own declaration, whatever the registry happens to contain. Coverage
+ * that every real field block declares a type lives in block-names.test.js, read from source.
+ */
+await jest.unstable_mockModule( '../../../../../src/blocks/contact-form/child-blocks.js', () => ( {
+	childBlocks: [
+		{ name: 'field-text', conditional_logic: { type: 'string' } },
+		{ name: 'field-radio', conditional_logic: { type: 'choice' } },
+		{ name: 'field-checkbox', conditional_logic: { type: 'boolean' } },
+		// Field-prefixed but with no declaration: opts out of conditional logic.
+		{ name: 'field-not-a-real-type' },
+		// jetpack/input imports the same shared settings and therefore carries the attribute,
+		// but it is an inner input, not a field, so it must not get a panel of its own.
+		{ name: 'input', conditional_logic: { type: 'string' } },
+		{ name: 'label' },
+	],
+} ) );
+
 const { FEATURE_FLAG, FILTER_NAMESPACE, isConditionalLogicField, registerConditionalLogicFilter } =
 	await import( '../../../../../src/blocks/shared/conditional-logic/register.jsx' );
 
-// Every field block in the package. If a new jetpack/field-* block is added without a type
-// mapping, this list and field-types.ts disagree and the mapping test fails first.
-const FIELD_BLOCKS = [
-	'jetpack/field-text',
-	'jetpack/field-name',
-	'jetpack/field-email',
-	'jetpack/field-url',
-	'jetpack/field-textarea',
-	'jetpack/field-telephone',
-	'jetpack/field-select',
-	'jetpack/field-radio',
-	'jetpack/field-image-select',
-	'jetpack/field-checkbox-multiple',
-	'jetpack/field-number',
-	'jetpack/field-slider',
-	'jetpack/field-rating',
-	'jetpack/field-date',
-	'jetpack/field-time',
-	'jetpack/field-checkbox',
-	'jetpack/field-consent',
-	'jetpack/field-hidden',
-	'jetpack/field-file',
-];
-
 describe( 'conditional logic registration', () => {
-	it( 'covers all 19 field blocks', () => {
-		expect( FIELD_BLOCKS ).toHaveLength( 19 );
-	} );
+	it.each( [ 'jetpack/field-text', 'jetpack/field-radio', 'jetpack/field-checkbox' ] )(
+		'applies to %s',
+		name => {
+			expect( isConditionalLogicField( name ) ).toBe( true );
+		}
+	);
 
-	it.each( FIELD_BLOCKS )( 'applies to %s', name => {
-		expect( isConditionalLogicField( name ) ).toBe( true );
-	} );
-
-	// jetpack/input imports the same shared settings and therefore carries the attribute, but
-	// it is an inner input, not a field, so it must not get a panel of its own.
 	it.each( [
 		'jetpack/input',
 		'jetpack/input-image-option',

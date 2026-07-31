@@ -16,6 +16,16 @@ export const form_editor = {
 	category: 'choice',
 };
 
+/**
+ * Conditional logic: how this field's value is compared.
+ *
+ * Declared per block so the rule builder can offer the right operators and value
+ * input. A block that omits this simply gets no conditional-logic support.
+ */
+export const conditional_logic = {
+	type: 'choice',
+};
+
 export const settings = {
 	...defaultSettings,
 	title: __( 'Image Select Field', 'jetpack-forms' ),
@@ -109,4 +119,5 @@ export default {
 	name,
 	settings,
 	form_editor,
+	conditional_logic,
 };
