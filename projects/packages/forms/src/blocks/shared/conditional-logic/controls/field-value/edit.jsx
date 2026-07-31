@@ -239,7 +239,11 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 				</Notice>
 			) }
 
-			<Stack gap="sm" className="jetpack-contact-form__conditional-logic-rule-body">
+			<Stack
+				direction="column"
+				gap="sm"
+				className="jetpack-contact-form__conditional-logic-rule-body"
+			>
 				<SelectControl
 					label={ __( 'Field', 'jetpack-forms' ) }
 					hideLabelFromVision
@@ -327,7 +331,7 @@ const FieldValueControl = ( { value, onChange, fields } ) => {
 	}
 
 	return (
-		<Stack gap="md" className="jetpack-contact-form__conditional-logic-control">
+		<Stack direction="column" gap="md" className="jetpack-contact-form__conditional-logic-control">
 			{ rules.map( ( rule, index ) => (
 				<RuleRow
 					key={ index }
