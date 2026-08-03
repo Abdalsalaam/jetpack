@@ -14,7 +14,7 @@
 		"@automattic/ui": "1.0.2",
 		"@jetpack-premium-analytics/datetime": "workspace:*",
 		"@jetpack-premium-analytics/formatters": "workspace:*",
-		"@wordpress/components": "37.0.0",
+		"@wordpress/components": "38.0.0",
 		"@wordpress/compose": "8.4.0",
 		"@wordpress/dataviews": "17.1.0",
 		"@wordpress/i18n": "^6.9.0",
