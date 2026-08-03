@@ -251,6 +251,7 @@ export type { FilterCondition } from './types/filter-condition';
 export type { ProductType } from './types/product-type';
 export { ORDER_ATTRIBUTION_VIEWS } from './api/report-order-attribution-summary-fetch';
 export {
+	getAllowedIntervalsForRange,
 	getDateFormatFromInterval,
 	getDefaultIntervalForPeriod,
 	resolveIntervalForRange,

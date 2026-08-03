@@ -92,7 +92,7 @@ function getAllowedIntervalsByRange( from: string, to: string ): IntervalType[] 
  * @param to     - Range end.
  * @return Allowed intervals, finest first.
  */
-function getAllowedIntervalsForPreset(
+export function getAllowedIntervalsForRange(
 	preset: PrimaryPresetId | undefined,
 	from: string,
 	to: string
@@ -136,7 +136,7 @@ export function resolveIntervalForRange(
 	to: string,
 	current?: string
 ): IntervalType {
-	const allowed = getAllowedIntervalsForPreset( preset, from, to );
+	const allowed = getAllowedIntervalsForRange( preset, from, to );
 
 	if ( isIntervalType( current ) && allowed.includes( current ) ) {
 		return current;
