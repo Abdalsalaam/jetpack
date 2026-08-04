@@ -640,8 +640,11 @@ class Contact_Form extends Contact_Form_Shortcode {
 
 		$processor = new \WP_HTML_Tag_Processor( $this->body );
 
+		// Matches the element the runtime hides, which is not always the one carrying
+		// data-jp-field-id: an inset label puts the width class on an outer wrapper, and
+		// hiding the inner div there leaves the wrapper holding its slot in the row.
 		while ( $processor->next_tag( array( 'tag_name' => 'DIV' ) ) ) {
-			$field_id = $processor->get_attribute( 'data-jp-field-id' );
+			$field_id = $processor->get_attribute( 'data-jp-visibility-root' );
 
 			if ( null !== $field_id && isset( $hidden[ $field_id ] ) ) {
 				$processor->add_class( 'jetpack-field--conditionally-hidden' );

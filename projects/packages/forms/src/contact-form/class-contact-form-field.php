@@ -2789,6 +2789,18 @@ class Contact_Form_Field extends Contact_Form_Shortcode {
 		// `conditionalLogic`, and this field's wrapper reads its own entry from there.
 		$interactivity_attrs = ' data-wp-interactive="jetpack/form" ' . wp_interactivity_data_wp_context( $context ) . ' ';
 
+		// Hiding a field has to hide whichever element occupies the slot in the row, or the
+		// field disappears and leaves a hole behind it. For an inset label that is the outer
+		// wrapper, which is where the width class lives -- the inner div is inside it and
+		// carries no width of its own.
+		// data-jp-visibility-root names the element the initial server-side render stamps, so
+		// the first paint and the runtime always hide the same element. Matching on
+		// data-jp-field-id instead would stamp the inner div even when the wrapper is the one
+		// the runtime hides.
+		$visibility_attrs = " data-jp-visibility-root='" . esc_attr( $id ) . "'"
+			. ( $this->has_conditional_logic() ? " data-jp-conditional='1'" : '' )
+			. ' data-wp-class--jetpack-field--conditionally-hidden="state.isFieldHidden"';
+
 		// Fields with an inset label need an extra wrapper to show the error message below the input.
 		if ( $has_inset_label ) {
 			$field_width       = $this->get_attribute( 'width' );
@@ -2798,11 +2810,12 @@ class Contact_Form_Field extends Contact_Form_Shortcode {
 				array_push( $inset_label_class, 'grunion-field-width-' . $field_width . '-wrap' );
 			}
 
-			$field              .= "\n<div class='" . implode( ' ', $inset_label_class ) . "' {$interactivity_attrs} >\n";
+			$field              .= "\n<div class='" . implode( ' ', $inset_label_class ) . "' {$interactivity_attrs} {$visibility_attrs} >\n";
 			$interactivity_attrs = ''; // Reset interactivity attributes for the field wrapper.
+			$visibility_attrs    = ''; // The outer wrapper owns visibility for this layout.
 		}
 
-		$field .= "\n<div {$block_style} {$interactivity_attrs} {$shell_field_class} data-jp-field-id='" . esc_attr( $id ) . "'" . ( $this->has_conditional_logic() ? " data-jp-conditional='1'" : '' ) . " data-wp-init='callbacks.initializeField' data-wp-on--jetpack-form-reset='callbacks.initializeField' data-wp-class--jetpack-field--conditionally-hidden=\"state.isFieldHidden\" >\n"; // new in Jetpack 6.8.0
+		$field .= "\n<div {$block_style} {$interactivity_attrs} {$shell_field_class} data-jp-field-id='" . esc_attr( $id ) . "'{$visibility_attrs} data-wp-init='callbacks.initializeField' data-wp-on--jetpack-form-reset='callbacks.initializeField' >\n"; // new in Jetpack 6.8.0
 
 		switch ( $type ) {
 			case 'email':

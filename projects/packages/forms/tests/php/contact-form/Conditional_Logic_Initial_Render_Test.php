@@ -107,7 +107,7 @@ class Conditional_Logic_Initial_Render_Test extends BaseTestCase {
 		$processor = new \WP_HTML_Tag_Processor( $body );
 
 		while ( $processor->next_tag( array( 'tag_name' => 'DIV' ) ) ) {
-			if ( $field_id === $processor->get_attribute( 'data-jp-field-id' ) ) {
+			if ( $field_id === $processor->get_attribute( 'data-jp-visibility-root' ) ) {
 				return (string) $processor->get_attribute( 'class' );
 			}
 		}
@@ -205,6 +205,64 @@ class Conditional_Logic_Initial_Render_Test extends BaseTestCase {
 		$this->assertStringNotContainsString(
 			'jetpack-field--conditionally-hidden',
 			$this->wrapper_for( $body, 'dependent' )
+		);
+	}
+
+	/**
+	 * An inset label puts the width class on an outer wrapper, so that wrapper is what holds
+	 * the field's slot in the row. Hiding the inner div instead left the wrapper in place and
+	 * the row kept a hole where the field had been.
+	 */
+	public function test_an_inset_label_field_hides_the_wrapper_that_holds_the_row_slot() {
+		// The inset label comes from the form's block style, not a style attribute.
+		$form = new Contact_Form(
+			array(
+				'id'        => 'cl-inset',
+				'className' => 'is-style-outlined',
+			)
+		);
+
+		$trigger = new Contact_Form_Field(
+			array(
+				'id'    => 'trigger',
+				'type'  => 'text',
+				'label' => 'Trigger',
+			),
+			'',
+			$form
+		);
+
+		$dependent = new Contact_Form_Field(
+			array(
+				'id'               => 'dependent',
+				'type'             => 'text',
+				'label'            => 'Dependent',
+				'width'            => '50',
+				'conditionallogic' => $this->logic(),
+			),
+			'',
+			$form
+		);
+
+		$form->fields = array(
+			'trigger'   => $trigger,
+			'dependent' => $dependent,
+		);
+		$form->body   = $trigger->render() . $dependent->render();
+
+		$form->apply_initial_field_visibility();
+
+		$classes = $this->wrapper_for( (string) $form->body, 'dependent' );
+
+		$this->assertStringContainsString(
+			'jetpack-field--conditionally-hidden',
+			$classes,
+			'The hidden field must ship hidden.'
+		);
+		$this->assertStringContainsString(
+			'contact-form__inset-label-wrap',
+			$classes,
+			'The element hidden must be the wrapper carrying the width, not the inner field.'
 		);
 	}
 }
