@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import path from 'path';
 import {
 	evaluateLogic,
 	resolveVisibility,
@@ -351,4 +353,53 @@ describe( 'resolveVisibility — cascade', () => {
 			expect( visible[ `f${ i }` ] ).toBe( false );
 		}
 	} );
+} );
+
+/**
+ * Behavioural parity with the PHP evaluator.
+ *
+ * The PHP-side parity test pins the shared vocabulary -- operator names and the field type
+ * table -- but that is not where the two implementations drift: both the Date.parse/strtotime
+ * disagreement and the consent value-shape bug passed it. This reads the same table
+ * Conditional_Logic_Behaviour_Test.php does, so a comparison that behaves differently in the
+ * two languages fails on one side.
+ */
+describe( 'behaviour parity with PHP', () => {
+	const fixture = JSON.parse(
+		readFileSync(
+			path.join( process.cwd(), 'tests/fixtures/conditional-logic-behaviour.json' ),
+			'utf8'
+		)
+	);
+
+	it.each( fixture.cases.map( testCase => [ testCase.name, testCase ] ) )(
+		'%s',
+		( name, testCase ) => {
+			const logic = {
+				enabled: true,
+				action: 'show',
+				logicalOperator: 'all',
+				controls: {
+					fieldValue: {
+						rules: [
+							{
+								field: 'subject',
+								operator: testCase.operator,
+								value: testCase.value,
+							},
+						],
+					},
+				},
+			};
+
+			const visible = evaluateLogic(
+				logic,
+				{ subject: testCase.type },
+				{ subject: testCase.actual },
+				testCase.format ? { subject: testCase.format } : {}
+			);
+
+			expect( visible ).toBe( testCase.visible );
+		}
+	);
 } );

@@ -77,9 +77,7 @@ describe( 'withConditionalLogic', () => {
 		renderBlock( 'jetpack/field-text', false );
 
 		expect( screen.getByText( 'edit: jetpack/field-text' ) ).toBeInTheDocument();
-		expect(
-			screen.queryByRole( 'button', { name: 'Conditional logic' } )
-		).not.toBeInTheDocument();
+		expect( screen.queryByRole( 'button', { name: 'Conditional logic' } ) ).not.toBeInTheDocument();
 	} );
 
 	it( 'renders a non-field block untouched, without loading the panel', () => {

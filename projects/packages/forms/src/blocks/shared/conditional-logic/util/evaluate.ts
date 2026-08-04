@@ -36,6 +36,13 @@ export type FieldDescriptor = {
 	 * identical inputs and a fix can be ported between them without translating arguments.
 	 */
 	type: string;
+	/**
+	 * A date field's `dateformat`, e.g. `dd/mm/yy`.
+	 *
+	 * The field writes its value in this format, so the comparison has to read it the same
+	 * way. Absent for every other field type.
+	 */
+	format?: string;
 };
 
 /**
@@ -137,12 +144,57 @@ const toNumericPair = ( actual: unknown, expected: unknown ): [ number, number ]
  * @param typeKey  - Either `date` or `time`.
  * @return Both sides as numbers, or null when either side cannot be parsed.
  */
+/**
+ * Parse a date into a comparable YYYYMMDD integer.
+ *
+ * Deliberately not Date.parse(). It reads a bare `YYYY-MM-DD` as UTC but `mm/dd/yy` as local
+ * time, so PHP's site-local reading and this one disagreed by the visitor's UTC offset: `is`
+ * was false here while `after` was true on the server. A `dd/mm/yy` field was worse -- neither
+ * engine could read `31/12/2026`, so a show-rule hid its field permanently and the answer was
+ * dropped at storage.
+ *
+ * The field's own format decides how to read the value, the same way the datepicker wrote it.
+ * A rule's value always arrives as ISO, since the rule builder uses a native date input.
+ *
+ * @param text   - Date text.
+ * @param format - Field date format: `mm/dd/yy`, `dd/mm/yy` or `yy-mm-dd`.
+ * @return YYYYMMDD, or null when the text does not match.
+ */
+const parseDate = ( text: string, format: string ): number | null => {
+	const toInt = ( year: number, month: number, day: number ): number | null =>
+		month < 1 || month > 12 || day < 1 || day > 31 ? null : year * 10000 + month * 100 + day;
+
+	// ISO first: the rule side is always ISO, and it is the default field format.
+	const iso = text.match( /^(\d{4})-(\d{1,2})-(\d{1,2})$/ );
+	if ( iso ) {
+		return toInt( Number( iso[ 1 ] ), Number( iso[ 2 ] ), Number( iso[ 3 ] ) );
+	}
+
+	const parts = text.match( /^(\d{1,4})[/.-](\d{1,2})[/.-](\d{1,4})$/ );
+	if ( ! parts ) {
+		return null;
+	}
+
+	const [ , a, b, c ] = parts.map( Number ) as unknown as number[];
+
+	// jQuery UI tokens, as used by the field: `yy` is the four-digit year.
+	switch ( format ) {
+		case 'dd/mm/yy':
+			return toInt( c, b, a );
+		case 'mm/dd/yy':
+			return toInt( c, a, b );
+		default:
+			return toInt( a, b, c );
+	}
+};
+
 const toTemporalPair = (
 	actual: unknown,
 	expected: unknown,
-	typeKey: TypeKey
+	typeKey: TypeKey,
+	format = ''
 ): [ number, number ] | null => {
-	const parse = ( value: unknown ): number | null => {
+	const parse = ( value: unknown, valueFormat: string ): number | null => {
 		const text = toComparableString( value ).trim();
 		if ( '' === text ) {
 			return null;
@@ -154,12 +206,12 @@ const toTemporalPair = (
 			}
 			return Number( match[ 1 ] ) * 60 + Number( match[ 2 ] );
 		}
-		const stamp = Date.parse( text );
-		return Number.isNaN( stamp ) ? null : stamp;
+		return parseDate( text, valueFormat );
 	};
 
-	const left = parse( actual );
-	const right = parse( expected );
+	// The submitted value is written in the field's format; a rule's value is always ISO.
+	const left = parse( actual, format );
+	const right = parse( expected, '' );
 	if ( left === null || right === null ) {
 		return null;
 	}
@@ -172,9 +224,15 @@ const toTemporalPair = (
  * @param rule    - The rule to evaluate.
  * @param typeKey - Comparison behavior of the rule's subject field.
  * @param actual  - The subject field's current value.
+ * @param format
  * @return True or false, or null when the rule cannot be evaluated and must be ignored.
  */
-const evaluateRuleValue = ( rule: Rule, typeKey: TypeKey, actual: unknown ): boolean | null => {
+const evaluateRuleValue = (
+	rule: Rule,
+	typeKey: TypeKey,
+	actual: unknown,
+	format = ''
+): boolean | null => {
 	const operator = rule.operator;
 	const expected = operatorNeedsValue( operator ) ? rule.value ?? '' : '';
 
@@ -229,7 +287,7 @@ const evaluateRuleValue = ( rule: Rule, typeKey: TypeKey, actual: unknown ): boo
 	}
 
 	if ( 'date' === typeKey || 'time' === typeKey ) {
-		const pair = toTemporalPair( actual, expected, typeKey );
+		const pair = toTemporalPair( actual, expected, typeKey, format );
 		if ( pair === null ) {
 			return false;
 		}
@@ -272,15 +330,17 @@ const evaluateRuleValue = ( rule: Rule, typeKey: TypeKey, actual: unknown ): boo
  * against an empty value, so deleting an unrelated block cannot silently hide a field.
  * When every rule is ignored the field stays visible.
  *
- * @param logic      - The field's conditional-logic config.
- * @param fieldTypes - Map of field id to shortcode field type, for every field in the form.
- * @param values     - Map of field id to current value.
+ * @param logic        - The field's conditional-logic config.
+ * @param fieldTypes   - Map of field id to shortcode field type, for every field in the form.
+ * @param values       - Map of field id to current value.
+ * @param fieldFormats
  * @return True when the field should be visible.
  */
 export const evaluateLogic = (
 	logic: ConditionalLogic | null | undefined,
 	fieldTypes: Record< string, string >,
-	values: FormValues
+	values: FormValues,
+	fieldFormats: Record< string, string > = {}
 ): boolean => {
 	if ( ! logic || ! logic.enabled ) {
 		return true;
@@ -300,7 +360,13 @@ export const evaluateLogic = (
 			return; // Subject field no longer exists — ignore this rule.
 		}
 		const typeKey = getTypeKeyForFieldType( fieldTypes[ rule.field ] );
-		const outcome = evaluateRuleValue( rule, typeKey, values[ rule.field ] );
+		// A date field's value is written in its own format, so the comparison needs it.
+		const outcome = evaluateRuleValue(
+			rule,
+			typeKey,
+			values[ rule.field ],
+			fieldFormats[ rule.field ] ?? ''
+		);
 		if ( outcome !== null ) {
 			outcomes.push( outcome );
 		}
@@ -344,12 +410,14 @@ export const resolveVisibility = (
 	}
 
 	const fieldTypes: Record< string, string > = {};
+	const fieldFormats: Record< string, string > = {};
 	ids.forEach( id => {
 		fieldTypes[ id ] = fields[ id ].type;
+		if ( fields[ id ].format ) {
+			fieldFormats[ id ] = fields[ id ].format as string;
+		}
 	} );
 
-	// An acyclic dependency chain settles at least one more level per pass, so this bound is
-	// always enough to reach a fixed point unless the rules are circular.
 	// One pass per conditional field, plus one to confirm nothing moved. Not clamped to a
 	// constant: that made an acyclic chain deeper than the clamp read as circular and fail
 	// open. The field count is what guarantees convergence, and it cannot exceed the form.
@@ -368,7 +436,7 @@ export const resolveVisibility = (
 
 		let changedCount = 0;
 		withLogic.forEach( id => {
-			const next = evaluateLogic( fields[ id ].logic, fieldTypes, effective );
+			const next = evaluateLogic( fields[ id ].logic, fieldTypes, effective, fieldFormats );
 			if ( next !== visible[ id ] ) {
 				visible[ id ] = next;
 				changedCount++;

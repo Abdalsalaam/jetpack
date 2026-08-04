@@ -129,12 +129,13 @@ const RuleValueControl = ( { rule, subject, onChange } ) => {
 /**
  * A single condition row: subject field, operator, and value.
  *
- * @param {object}   props          - Component props.
- * @param {object}   props.rule     - The rule being edited.
- * @param {number}   props.index    - Zero-based rule index.
- * @param {Array}    props.fields   - Available subject fields.
- * @param {Function} props.onChange - Called with (index, patch).
- * @param {Function} props.onRemove - Called with (index).
+ * @param {object}   props            - Component props.
+ * @param {object}   props.rule       - The rule being edited.
+ * @param {number}   props.index      - Zero-based rule index.
+ * @param {Array}    props.fields     - Available subject fields.
+ * @param            props.ownFieldId
+ * @param {Function} props.onChange   - Called with (index, patch).
+ * @param {Function} props.onRemove   - Called with (index).
  * @return {object} The rendered rule row.
  */
 const RuleRow = ( { rule, index, fields, ownFieldId, onChange, onRemove } ) => {
@@ -293,10 +294,11 @@ const RuleRow = ( { rule, index, fields, ownFieldId, onChange, onRemove } ) => {
 /**
  * The Field Value control: a list of conditions comparing sibling fields.
  *
- * @param {object}   props          - Component props.
- * @param {object}   props.value    - This control's stored config, `{ rules }`.
- * @param {Function} props.onChange - Called with the control's next config.
- * @param {Array}    props.fields   - Available subject fields.
+ * @param {object}   props            - Component props.
+ * @param {object}   props.value      - This control's stored config, `{ rules }`.
+ * @param {Function} props.onChange   - Called with the control's next config.
+ * @param {Array}    props.fields     - Available subject fields.
+ * @param            props.ownFieldId
  * @return {object} The rendered control.
  */
 const FieldValueControl = ( { value, onChange, fields, ownFieldId } ) => {

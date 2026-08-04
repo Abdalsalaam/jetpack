@@ -45,6 +45,9 @@ export const resolveFormVisibility = context => {
 	}
 
 	const typesByField = conditionalLogic.types || {};
+	// Only date fields carry one; the comparison needs it to read the value the way the
+	// datepicker wrote it.
+	const formatsByField = conditionalLogic.formats || {};
 	const fields = context.fields || {};
 	const values = {};
 	for ( const id in fields ) {
@@ -64,6 +67,7 @@ export const resolveFormVisibility = context => {
 		descriptors[ id ] = {
 			logic: logicByField[ id ] || null,
 			type: typesByField[ id ],
+			format: formatsByField[ id ],
 		};
 	}
 

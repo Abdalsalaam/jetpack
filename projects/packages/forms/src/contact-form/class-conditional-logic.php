@@ -106,12 +106,13 @@ class Conditional_Logic {
 	 * field. When every rule is ignored the field stays visible.
 	 *
 	 * @param array|null $logic       The field's conditional-logic config.
-	 * @param array      $field_types Map of field id to shortcode type, for every form field.
-	 * @param array      $form_values Map of field id to submitted value.
+	 * @param array      $field_types   Map of field id to shortcode type, for every form field.
+	 * @param array      $form_values   Map of field id to submitted value.
+	 * @param array      $field_formats Map of field id to date format, for date fields.
 	 *
 	 * @return bool True when the field should be visible.
 	 */
-	public static function evaluate( $logic, array $field_types, array $form_values ): bool {
+	public static function evaluate( $logic, array $field_types, array $form_values, array $field_formats = array() ): bool {
 		if ( ! is_array( $logic ) || empty( $logic['enabled'] ) ) {
 			return true;
 		}
@@ -138,7 +139,9 @@ class Conditional_Logic {
 
 			$type_key = self::type_key_for_field_type( $field_types[ $field_id ] );
 			$actual   = array_key_exists( $field_id, $form_values ) ? $form_values[ $field_id ] : '';
-			$outcome  = self::evaluate_rule_value( $rule, $type_key, $actual );
+			// A date field's value is written in its own format, so the comparison needs it.
+			$format  = isset( $field_formats[ $field_id ] ) ? (string) $field_formats[ $field_id ] : '';
+			$outcome = self::evaluate_rule_value( $rule, $type_key, $actual, $format );
 
 			if ( null !== $outcome ) {
 				$outcomes[] = $outcome;
@@ -182,9 +185,13 @@ class Conditional_Logic {
 		}
 
 		$with_logic  = array();
-		$field_types = array();
+		$field_types   = array();
+		$field_formats = array();
 		foreach ( $fields as $field_id => $descriptor ) {
 			$field_types[ $field_id ] = $descriptor['type'] ?? 'text';
+			if ( isset( $descriptor['format'] ) ) {
+				$field_formats[ $field_id ] = (string) $descriptor['format'];
+			}
 			if ( isset( $descriptor['logic'] ) && is_array( $descriptor['logic'] ) && ! empty( $descriptor['logic']['enabled'] ) ) {
 				$with_logic[] = $field_id;
 			}
@@ -219,7 +226,7 @@ class Conditional_Logic {
 
 			$changed_count = 0;
 			foreach ( $with_logic as $field_id ) {
-				$next = self::evaluate( $fields[ $field_id ]['logic'], $field_types, $effective );
+				$next = self::evaluate( $fields[ $field_id ]['logic'], $field_types, $effective, $field_formats );
 				if ( $next !== $visible[ $field_id ] ) {
 					$visible[ $field_id ] = $next;
 					++$changed_count;
@@ -251,7 +258,7 @@ class Conditional_Logic {
 	 *
 	 * @return bool|null True or false, or null when the rule must be ignored.
 	 */
-	private static function evaluate_rule_value( array $rule, $type_key, $actual ) {
+	private static function evaluate_rule_value( array $rule, $type_key, $actual, $format = '' ) {
 		$operator = (string) $rule['operator'];
 		$expected = '';
 		if ( ! in_array( $operator, self::OPERATORS_WITHOUT_VALUE, true ) && isset( $rule['value'] ) ) {
@@ -308,7 +315,7 @@ class Conditional_Logic {
 		}
 
 		if ( 'date' === $type_key || 'time' === $type_key ) {
-			$pair = self::to_temporal_pair( $actual, $expected, $type_key );
+			$pair = self::to_temporal_pair( $actual, $expected, $type_key, $format );
 			if ( null === $pair ) {
 				return false;
 			}
@@ -399,9 +406,10 @@ class Conditional_Logic {
 	 *
 	 * @return array|null Both sides as ints, or null when either side cannot be parsed.
 	 */
-	private static function to_temporal_pair( $actual, $expected, $type_key ) {
-		$left  = self::parse_temporal( $actual, $type_key );
-		$right = self::parse_temporal( $expected, $type_key );
+	private static function to_temporal_pair( $actual, $expected, $type_key, $format = '' ) {
+		// The submitted value is written in the field's format; a rule's value is always ISO.
+		$left  = self::parse_temporal( $actual, $type_key, $format );
+		$right = self::parse_temporal( $expected, $type_key, '' );
 
 		if ( null === $left || null === $right ) {
 			return null;
@@ -418,7 +426,7 @@ class Conditional_Logic {
 	 *
 	 * @return int|null Comparable integer, or null when unparseable.
 	 */
-	private static function parse_temporal( $value, $type_key ) {
+	private static function parse_temporal( $value, $type_key, $format = '' ) {
 		$text = trim( self::to_comparable_string( $value ) );
 		if ( '' === $text ) {
 			return null;
@@ -431,9 +439,64 @@ class Conditional_Logic {
 			return ( (int) $matches[1] ) * 60 + (int) $matches[2];
 		}
 
-		$stamp = strtotime( $text );
+		return self::parse_date( $text, $format );
+	}
 
-		return false === $stamp ? null : $stamp;
+	/**
+	 * Parse a date into a comparable YYYYMMDD integer.
+	 *
+	 * Deliberately not strtotime(). The browser has to reach the same answer, and its
+	 * Date.parse() reads a bare `YYYY-MM-DD` as UTC while reading `mm/dd/yy` as local time --
+	 * so for any visitor away from UTC the two engines disagreed by the offset, and `is` was
+	 * false on one side while `after` was true on the other. A `dd/mm/yy` field was worse:
+	 * neither engine could read `31/12/2026` at all, so a show-rule hid its field permanently
+	 * and the answer was then dropped at storage.
+	 *
+	 * The field's own format decides how to read the value, the same way the datepicker
+	 * writes it. A rule's value always arrives as ISO, since the rule builder uses a native
+	 * date input, so ISO is accepted regardless of the field's format.
+	 *
+	 * @param string $text   Date text.
+	 * @param string $format Field date format: `mm/dd/yy`, `dd/mm/yy` or `yy-mm-dd`.
+	 *
+	 * @return int|null YYYYMMDD, or null when the text does not match.
+	 */
+	private static function parse_date( $text, $format = '' ) {
+		// ISO first: the rule side is always ISO, and it is the default field format.
+		if ( preg_match( '/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $text, $m ) ) {
+			return self::to_date_int( (int) $m[1], (int) $m[2], (int) $m[3] );
+		}
+
+		if ( ! preg_match( '/^(\d{1,4})[\/.-](\d{1,2})[\/.-](\d{1,4})$/', $text, $m ) ) {
+			return null;
+		}
+
+		// jQuery UI tokens, as used by the field: `yy` is the four-digit year.
+		switch ( $format ) {
+			case 'dd/mm/yy':
+				return self::to_date_int( (int) $m[3], (int) $m[2], (int) $m[1] );
+			case 'mm/dd/yy':
+				return self::to_date_int( (int) $m[3], (int) $m[1], (int) $m[2] );
+			default:
+				return self::to_date_int( (int) $m[1], (int) $m[2], (int) $m[3] );
+		}
+	}
+
+	/**
+	 * Combine date parts, rejecting anything out of range.
+	 *
+	 * @param int $year  Four-digit year.
+	 * @param int $month Month.
+	 * @param int $day   Day.
+	 *
+	 * @return int|null YYYYMMDD, or null when the parts cannot be a date.
+	 */
+	private static function to_date_int( $year, $month, $day ) {
+		if ( $month < 1 || $month > 12 || $day < 1 || $day > 31 ) {
+			return null;
+		}
+
+		return $year * 10000 + $month * 100 + $day;
 	}
 
 	/**

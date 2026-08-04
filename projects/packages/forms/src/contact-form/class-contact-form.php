@@ -3886,11 +3886,17 @@ class Contact_Form extends Contact_Form_Shortcode {
 			return array();
 		}
 
-		$types = array();
-		$logic = array();
+		$types   = array();
+		$logic   = array();
+		$formats = array();
 
 		foreach ( $this->fields as $field_id => $field ) {
 			$types[ $field_id ] = $field->get_attribute( 'type' );
+
+			$date_format = $field->get_attribute( 'dateformat' );
+			if ( ! empty( $date_format ) ) {
+				$formats[ $field_id ] = $date_format;
+			}
 
 			$field_logic = $field->get_attribute( 'conditionallogic' );
 			if ( is_array( $field_logic ) && ! empty( $field_logic['enabled'] ) ) {
@@ -3903,8 +3909,10 @@ class Contact_Form extends Contact_Form_Shortcode {
 		}
 
 		return array(
-			'types' => $types,
-			'logic' => $logic,
+			'types'   => $types,
+			'logic'   => $logic,
+			// Only date fields appear here; everything else compares without a format.
+			'formats' => $formats,
 		);
 	}
 
@@ -3956,6 +3964,9 @@ class Contact_Form extends Contact_Form_Shortcode {
 			$descriptors[ $field_id ] = array(
 				'logic' => $field->get_attribute( 'conditionallogic' ),
 				'type'  => $field->get_attribute( 'type' ),
+				// A date field's value is written in its own format, and the comparison has
+				// to read it the same way the datepicker wrote it.
+				'format' => $field->get_attribute( 'dateformat' ),
 			);
 
 			// Resolve the value exactly as the field itself does when rendering: submitted
