@@ -51,7 +51,6 @@ const EXPECTED_TYPES = {
 	'jetpack/field-telephone': 'string',
 	'jetpack/field-select': 'choice',
 	'jetpack/field-radio': 'choice',
-	'jetpack/field-image-select': 'choice',
 	'jetpack/field-checkbox-multiple': 'multichoice',
 	'jetpack/field-number': 'number',
 	'jetpack/field-slider': 'number',
@@ -69,22 +68,38 @@ describe( 'field block conditional-logic declarations', () => {
 
 	it( 'finds every field block in the package', () => {
 		expect( blocks ).toHaveLength( 19 );
-		expect( Object.keys( EXPECTED_TYPES ) ).toHaveLength( 19 );
+		// One block deliberately opts out, see below.
+		expect( Object.keys( EXPECTED_TYPES ) ).toHaveLength( 18 );
+	} );
+
+	/**
+	 * An image-select field submits a JSON document, not the label the rule builder offers,
+	 * so every evaluator would compare the two and never match: `is` permanently false, `is
+	 * not` permanently true. Offering no rule beats offering one that cannot fire.
+	 */
+	it( 'leaves image-select without conditional-logic support', () => {
+		const imageSelect = blocks.find( block => block.dir === 'field-image-select' );
+
+		expect( imageSelect.type ).toBeNull();
+		expect( imageSelect.exported ).toBe( false );
 	} );
 
 	it( 'registers the block names the table expects', () => {
-		expect( blocks.map( block => block.blockName ).sort() ).toEqual(
+		const declaring = blocks.filter( block => block.type !== null );
+
+		expect( declaring.map( block => block.blockName ).sort() ).toEqual(
 			Object.keys( EXPECTED_TYPES ).sort()
 		);
 	} );
 
-	it.each( readFieldBlocks().map( block => [ block.dir, block ] ) )(
-		'%s declares and exports its comparison behavior',
-		( dir, block ) => {
-			expect( block.type ).toBe( EXPECTED_TYPES[ block.blockName ] );
-			expect( block.exported ).toBe( true );
-			// The declared type must be one the rule builder can offer operators for.
-			expect( getOperatorsForTypeKey( block.type ).length ).toBeGreaterThan( 0 );
-		}
-	);
+	it.each(
+		readFieldBlocks()
+			.filter( block => block.type !== null )
+			.map( block => [ block.dir, block ] )
+	)( '%s declares and exports its comparison behavior', ( dir, block ) => {
+		expect( block.type ).toBe( EXPECTED_TYPES[ block.blockName ] );
+		expect( block.exported ).toBe( true );
+		// The declared type must be one the rule builder can offer operators for.
+		expect( getOperatorsForTypeKey( block.type ).length ).toBeGreaterThan( 0 );
+	} );
 } );

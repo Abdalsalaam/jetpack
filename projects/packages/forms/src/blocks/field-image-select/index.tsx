@@ -16,15 +16,19 @@ export const form_editor = {
 	category: 'choice',
 };
 
-/**
- * Conditional logic: how this field's value is compared.
+/*
+ * Deliberately no `conditional_logic` declaration, so this block gets no panel.
  *
- * Declared per block so the rule builder can offer the right operators and value
- * input. A block that omits this simply gets no conditional-logic support.
+ * An image-select field submits a JSON document describing the choice
+ * (`{"perceived":"A","selected":"a","label":"Blue",...}`), not the label the rule builder
+ * offers as a value. All three evaluators would compare that document against `Blue` and
+ * never match, so `is` would be permanently false and `is not` permanently true: a rule
+ * would hide its field forever and the answer would then be dropped at storage.
+ *
+ * Comparing the decoded `label` in every evaluator is the real fix, but that is value-shape
+ * handling in exactly the place where the JS and PHP evaluators already drift. Offering no
+ * rule is better than offering one that cannot fire.
  */
-export const conditional_logic = {
-	type: 'choice',
-};
 
 export const settings = {
 	...defaultSettings,
@@ -119,5 +123,4 @@ export default {
 	name,
 	settings,
 	form_editor,
-	conditional_logic,
 };

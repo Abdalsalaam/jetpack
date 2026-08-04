@@ -49,7 +49,12 @@ export const isConditionalLogicField = name =>
  */
 export const withConditionalLogic = createHigherOrderComponent(
 	BlockEdit => props => {
-		if ( ! isConditionalLogicField( props.name ) ) {
+		// Mounted only for the selected block. This filter wraps every field block, and the
+		// panel's useSelect walks the whole form tree to build the subject list; mounting it
+		// on all of them meant that walk ran per field on every block-editor store change,
+		// so a keystroke anywhere on the page cost O(fields x blocks). The inspector only
+		// ever shows the selected block's panel, so there is nothing to render otherwise.
+		if ( ! props.isSelected || ! isConditionalLogicField( props.name ) ) {
 			return <BlockEdit { ...props } />;
 		}
 

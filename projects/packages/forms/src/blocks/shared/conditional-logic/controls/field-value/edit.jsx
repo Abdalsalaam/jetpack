@@ -137,7 +137,7 @@ const RuleValueControl = ( { rule, subject, onChange } ) => {
  * @param {Function} props.onRemove - Called with (index).
  * @return {object} The rendered rule row.
  */
-const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
+const RuleRow = ( { rule, index, fields, ownFieldId, onChange, onRemove } ) => {
 	const ensureFieldId = useEnsureFieldId();
 
 	const subject = fields.find( field => field.id && field.id === rule.field );
@@ -156,7 +156,14 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
 			// the renderer derives one from the label at output time, which would also mean a
 			// rule silently stopped matching as soon as someone edited that label. Assign a
 			// stable id instead — the same thing the field's own Name/ID control writes.
-			const usedIds = fields.map( field => field.id ).filter( Boolean );
+			// useSubjectFields() deliberately excludes the field that owns the panel, so its
+			// id is the one this list cannot see. Without it, an unnamed "Email" subject
+			// picked from a panel on a field already using the id `email` gets handed `email`
+			// unchanged, and PHP's duplicate guard then renames whichever parses second. The
+			// saved rule keeps pointing at `email` and starts evaluating the wrong field --
+			// or the owner is the one renamed and its response key changes underneath a form
+			// that may already have responses.
+			const usedIds = [ ...fields.map( field => field.id ), ownFieldId ].filter( Boolean );
 			const fieldId = ensureFieldId( nextSubject, usedIds );
 
 			const operators = getOperatorsForTypeKey( nextSubject.typeKey );
@@ -292,7 +299,7 @@ const RuleRow = ( { rule, index, fields, onChange, onRemove } ) => {
  * @param {Array}    props.fields   - Available subject fields.
  * @return {object} The rendered control.
  */
-const FieldValueControl = ( { value, onChange, fields } ) => {
+const FieldValueControl = ( { value, onChange, fields, ownFieldId } ) => {
 	const rules = useMemo( () => ( Array.isArray( value?.rules ) ? value.rules : [] ), [ value ] );
 
 	const updateRule = useCallback(
@@ -338,6 +345,7 @@ const FieldValueControl = ( { value, onChange, fields } ) => {
 					rule={ rule }
 					index={ index }
 					fields={ fields }
+					ownFieldId={ ownFieldId }
 					onChange={ updateRule }
 					onRemove={ removeRule }
 				/>

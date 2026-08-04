@@ -135,6 +135,7 @@ const ConditionalLogicPanel = ( { clientId, attributes, setAttributes } ) => {
 							key={ slug }
 							value={ logic.controls[ slug ] }
 							fields={ fields }
+							ownFieldId={ attributes.id }
 							onChange={ next => handleControlChange( slug, next ) }
 						/>
 					);

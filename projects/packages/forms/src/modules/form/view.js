@@ -508,7 +508,14 @@ const { state, actions } = store( NAMESPACE, {
 			const fieldId = context.fieldId;
 			const field = context.fields[ fieldId ];
 
-			if ( context.fieldType === 'checkbox' ) {
+			// Keyed off what the control actually is, not what the field is called. A consent
+			// field renders as a checkbox but carries fieldType 'consent', so it skipped this
+			// and stored its literal `Yes` value whether checked or not. Conditional logic
+			// reads consent as a boolean, so unchecking it still read as checked: the fields
+			// it was supposed to gate stayed on screen and got filled in, and the server then
+			// resolved them hidden and dropped the answers. Anything checkbox-rendered later
+			// is covered by the same test.
+			if ( event.target.type === 'checkbox' ) {
 				value = event.target.checked ? '1' : '';
 			}
 

@@ -45,9 +45,15 @@ const noop = () => {};
 const BlockEdit = ( { name } ) => <div>edit: { name }</div>;
 const WrappedBlockEdit = withConditionalLogic( BlockEdit );
 
-const renderBlock = name =>
+const renderBlock = ( name, isSelected = true ) =>
 	render(
-		<WrappedBlockEdit name={ name } clientId="abc" attributes={ {} } setAttributes={ noop } />
+		<WrappedBlockEdit
+			name={ name }
+			isSelected={ isSelected }
+			clientId="abc"
+			attributes={ {} }
+			setAttributes={ noop }
+		/>
 	);
 
 describe( 'withConditionalLogic', () => {
@@ -60,6 +66,20 @@ describe( 'withConditionalLogic', () => {
 		await expect(
 			screen.findByRole( 'button', { name: 'Conditional logic' } )
 		).resolves.toBeInTheDocument();
+	} );
+
+	/**
+	 * The filter wraps every field block, but the inspector only shows the selected one.
+	 * Mounting the panel on the rest made its form-tree walk run per field on every
+	 * block-editor store change.
+	 */
+	it( 'does not mount the panel on a field block that is not selected', () => {
+		renderBlock( 'jetpack/field-text', false );
+
+		expect( screen.getByText( 'edit: jetpack/field-text' ) ).toBeInTheDocument();
+		expect(
+			screen.queryByRole( 'button', { name: 'Conditional logic' } )
+		).not.toBeInTheDocument();
 	} );
 
 	it( 'renders a non-field block untouched, without loading the panel', () => {
