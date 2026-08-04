@@ -2799,7 +2799,10 @@ class Contact_Form_Field extends Contact_Form_Shortcode {
 		// the runtime hides.
 		$visibility_attrs = " data-jp-visibility-root='" . esc_attr( $id ) . "'"
 			. ( $this->has_conditional_logic() ? " data-jp-conditional='1'" : '' )
-			. ' data-wp-class--jetpack-field--conditionally-hidden="state.isFieldHidden"';
+			. ' data-wp-class--jetpack-field--conditionally-hidden="state.isFieldHidden"'
+			// Runs whenever the field's visibility changes, so focus does not fall to <body>
+			// when the field the visitor is filling in disappears under them.
+			. ' data-wp-watch--conditional-focus="callbacks.manageConditionalFocus"';
 
 		// Fields with an inset label need an extra wrapper to show the error message below the input.
 		if ( $has_inset_label ) {

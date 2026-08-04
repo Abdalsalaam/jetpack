@@ -133,7 +133,8 @@ const RuleValueControl = ( { rule, subject, onChange } ) => {
  * @param {object}   props.rule       - The rule being edited.
  * @param {number}   props.index      - Zero-based rule index.
  * @param {Array}    props.fields     - Available subject fields.
- * @param            props.ownFieldId
+ * @param {string}   props.ownFieldId - Id of the field the panel belongs to, which is absent
+ *                                    from `fields` and so invisible to the uniqueness check.
  * @param {Function} props.onChange   - Called with (index, patch).
  * @param {Function} props.onRemove   - Called with (index).
  * @return {object} The rendered rule row.
@@ -176,7 +177,7 @@ const RuleRow = ( { rule, index, fields, ownFieldId, onChange, onRemove } ) => {
 
 			onChange( index, { field: fieldId, operator, value: '' } );
 		},
-		[ ensureFieldId, fields, index, onChange, rule.operator ]
+		[ ensureFieldId, fields, ownFieldId, index, onChange, rule.operator ]
 	);
 
 	const handleOperatorChange = useCallback(
@@ -298,7 +299,7 @@ const RuleRow = ( { rule, index, fields, ownFieldId, onChange, onRemove } ) => {
  * @param {object}   props.value      - This control's stored config, `{ rules }`.
  * @param {Function} props.onChange   - Called with the control's next config.
  * @param {Array}    props.fields     - Available subject fields.
- * @param            props.ownFieldId
+ * @param {string}   props.ownFieldId - Id of the field the panel belongs to.
  * @return {object} The rendered control.
  */
 const FieldValueControl = ( { value, onChange, fields, ownFieldId } ) => {

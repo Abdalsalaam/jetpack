@@ -375,7 +375,7 @@ describe( 'behaviour parity with PHP', () => {
 	it.each( fixture.cases.map( testCase => [ testCase.name, testCase ] ) )(
 		'%s',
 		( name, testCase ) => {
-			const logic = {
+			const caseLogic = {
 				enabled: true,
 				action: 'show',
 				logicalOperator: 'all',
@@ -393,7 +393,7 @@ describe( 'behaviour parity with PHP', () => {
 			};
 
 			const visible = evaluateLogic(
-				logic,
+				caseLogic,
 				{ subject: testCase.type },
 				{ subject: testCase.actual },
 				testCase.format ? { subject: testCase.format } : {}

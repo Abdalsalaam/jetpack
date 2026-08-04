@@ -224,7 +224,7 @@ const toTemporalPair = (
  * @param rule    - The rule to evaluate.
  * @param typeKey - Comparison behavior of the rule's subject field.
  * @param actual  - The subject field's current value.
- * @param format
+ * @param format  - The subject field's date format, when it has one.
  * @return True or false, or null when the rule cannot be evaluated and must be ignored.
  */
 const evaluateRuleValue = (
@@ -333,7 +333,7 @@ const evaluateRuleValue = (
  * @param logic        - The field's conditional-logic config.
  * @param fieldTypes   - Map of field id to shortcode field type, for every field in the form.
  * @param values       - Map of field id to current value.
- * @param fieldFormats
+ * @param fieldFormats - Map of field id to date format, for date fields.
  * @return True when the field should be visible.
  */
 export const evaluateLogic = (
