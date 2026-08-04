@@ -3157,6 +3157,17 @@ class Contact_Form extends Contact_Form_Shortcode {
 			update_post_meta( $post_id, '_feedback_akismet_values', $this->addslashes_deep( $akismet_values ) );
 		}
 
+		// Integrations must not see a field the visitor was never shown. MailPoet in
+		// particular reads this payload directly for explicit consent and the subscriber's
+		// email, so a forged POST naming a hidden consent field could otherwise subscribe
+		// someone off a question that was never on screen.
+		$visible_fields = $this->fields;
+		foreach ( $this->get_resolved_field_visibility() as $field_id => $is_visible ) {
+			if ( false === $is_visible ) {
+				unset( $visible_fields[ $field_id ] );
+			}
+		}
+
 		/**
 		 * Fires after the feedback post for the contact form submission has been inserted.
 		 *
@@ -3165,11 +3176,12 @@ class Contact_Form extends Contact_Form_Shortcode {
 		 * @since 8.6.0
 		 *
 		 * @param integer $post_id The post id that contains the contact form data.
-		 * @param array   $this->fields An array containg the form's Contact_Form_Field objects.
+		 * @param array   $visible_fields The form's Contact_Form_Field objects, less any that
+		 *                                conditional logic hid from the visitor.
 		 * @param boolean $is_spam Whether the form submission has been identified as spam.
 		 * @param array   $entry_values The feedback entry values.
 		 */
-		do_action( 'grunion_after_feedback_post_inserted', $post_id, $this->fields, $is_spam, $entry_values );
+		do_action( 'grunion_after_feedback_post_inserted', $post_id, $visible_fields, $is_spam, $entry_values );
 
 		// Build the complete email content via the renderer.
 		$context_data = array(

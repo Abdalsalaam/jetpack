@@ -30,6 +30,24 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 	}
 
 	/**
+	 * Submit the form the way a visitor does.
+	 *
+	 * The answers go into $_POST, because that is where Contact_Form resolves visibility
+	 * from. Handing Feedback a $post_data array that $_POST does not agree with would test a
+	 * state no submission can produce -- and storage reading a different value source than
+	 * validation is the bug this file now guards.
+	 *
+	 * @param array        $post_data Submitted values, keyed by field id.
+	 * @param Contact_Form $form      The form.
+	 * @return Feedback
+	 */
+	private function submit( $post_data, $form ) {
+		$_POST = array_merge( $_POST ?? array(), $post_data );
+
+		return Feedback::from_submission( $post_data, $form );
+	}
+
+	/**
 	 * Build a Contact_Form with a trigger text field and a dependent text field
 	 * whose visibility depends on the trigger.
 	 *
@@ -106,7 +124,7 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 			'dependent' => 'should-not-be-stored',
 		);
 
-		$feedback = Feedback::from_submission( $post_data, $form );
+		$feedback = $this->submit( $post_data, $form );
 
 		$this->assertNotNull(
 			$this->find_feedback_field( $feedback, 'trigger' ),
@@ -143,7 +161,7 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 			'dependent' => 'kept',
 		);
 
-		$feedback = Feedback::from_submission( $post_data, $form );
+		$feedback = $this->submit( $post_data, $form );
 
 		$dependent_field = $this->find_feedback_field( $feedback, 'dependent' );
 		$this->assertNotNull( $dependent_field, 'Dependent field should persist when rule matches.' );
@@ -175,7 +193,7 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 			'dependent' => 'still-kept',
 		);
 
-		$feedback = Feedback::from_submission( $post_data, $form );
+		$feedback = $this->submit( $post_data, $form );
 
 		$dependent_field = $this->find_feedback_field( $feedback, 'dependent' );
 		$this->assertNotNull( $dependent_field, 'Disabled logic must not strip the field.' );
@@ -207,7 +225,7 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 			'dependent' => 'leak',
 		);
 
-		$feedback = Feedback::from_submission( $post_data, $form );
+		$feedback = $this->submit( $post_data, $form );
 
 		$this->assertNull(
 			$this->find_feedback_field( $feedback, 'dependent' ),
@@ -280,7 +298,7 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 			'c' => $c,
 		);
 
-		$feedback = Feedback::from_submission(
+		$feedback = $this->submit(
 			array(
 				'a' => 'Something else',
 				'b' => 'stale',
@@ -295,5 +313,52 @@ class Feedback_Conditional_Logic_Test extends BaseTestCase {
 			$this->find_feedback_field( $feedback, 'c' ),
 			'C must not survive on the strength of a hidden field value.'
 		);
+	}
+
+	/**
+	 * Storage and validation must agree about a prefilled field the visitor cleared.
+	 *
+	 * Validation resolves visibility from get_computed_field_value(): POST, then GET, then
+	 * the field's default. Storage used to resolve again from POST alone. A trigger prefilled
+	 * through a query argument and then cleared by the visitor posts nothing, so the two read
+	 * opposite values -- the dependent field was validated as visible and required, and then
+	 * had its answer dropped as hidden.
+	 */
+	public function test_storage_agrees_with_validation_about_a_cleared_prefilled_trigger() {
+		$form = $this->build_form_with_dependent_field(
+			array(
+				'enabled'         => true,
+				'action'          => 'show',
+				'logicalOperator' => 'all',
+				'controls'        => array(
+					'fieldValue' => array(
+						'rules' => array(
+							array(
+								'field'    => 'trigger',
+								'operator' => 'is',
+								'value'    => 'yes',
+							),
+						),
+					),
+				),
+			)
+		);
+
+		// Prefilled in the link, cleared by the visitor: present in GET, absent from POST.
+		$_GET['trigger'] = 'yes';
+		$_POST           = array( 'dependent' => 'an answer' );
+
+		$feedback = Feedback::from_submission( array( 'dependent' => 'an answer' ), $form );
+
+		$visibility = $form->get_resolved_field_visibility();
+		$stored     = null !== $this->find_feedback_field( $feedback, 'dependent' );
+
+		$this->assertSame(
+			$visibility['dependent'] ?? true,
+			$stored,
+			'Storage must keep exactly the fields the form resolved as visible.'
+		);
+
+		unset( $_GET['trigger'] );
 	}
 }

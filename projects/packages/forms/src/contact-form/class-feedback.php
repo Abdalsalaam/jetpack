@@ -10,7 +10,6 @@ namespace Automattic\Jetpack\Forms\ContactForm;
 use Automattic\Jetpack\Connection\Client;
 use Automattic\Jetpack\Device_Detection\User_Agent_Info;
 use Automattic\Jetpack\Forms\Dashboard\Dashboard as Forms_Dashboard;
-use Automattic\Jetpack\Forms\Jetpack_Forms;
 use WP_Post;
 /**
  * Handles the response for a contact form submission.
@@ -485,6 +484,15 @@ class Feedback {
 	 */
 	private function load_from_submission( $post_data, $form, $current_post = null, $current_page_number = 1 ) {
 
+		// Drop the answers to fields conditional logic hid, once, before anything reads them.
+		//
+		// get_computed_fields() already skips hidden fields for the stored response, but the
+		// comment content, the consent flag, the author details and the notification
+		// recipients all read $post_data directly and were still seeing them. Stripping here
+		// is what makes "a hidden field was never answered" true for every consumer instead
+		// of just the one.
+		$post_data = self::without_hidden_answers( $post_data, $form );
+
 		$this->source = Feedback_Source::from_submission( $current_post, $current_page_number );
 
 		// Use the form's ref attribute as the authoritative form ID.
@@ -518,6 +526,32 @@ class Feedback {
 				'id'           => $current_user->ID,
 			);
 		}
+	}
+
+	/**
+	 * Remove submitted values belonging to fields conditional logic resolved as hidden.
+	 *
+	 * The form owns the resolution and caches it, so this asks rather than resolving again --
+	 * a second resolution over a different value source is exactly what let validation and
+	 * storage disagree about a prefilled consent field.
+	 *
+	 * @param array        $post_data The post data from the form submission.
+	 * @param Contact_Form $form      The form object.
+	 * @return array The post data, less any hidden field's answer.
+	 */
+	private static function without_hidden_answers( $post_data, $form ) {
+		if ( ! is_array( $post_data ) ) {
+			return $post_data;
+		}
+
+		// Empty when the feature is off, so this is a no-op then.
+		foreach ( $form->get_resolved_field_visibility() as $field_id => $is_visible ) {
+			if ( false === $is_visible ) {
+				unset( $post_data[ $field_id ] );
+			}
+		}
+
+		return $post_data;
 	}
 
 	/**
@@ -2187,21 +2221,23 @@ class Feedback {
 			);
 		}
 
-		// Resolve visibility for every renderable field in one pass. Conditional logic
-		// cascades, so a field hidden by its own rule has to read as empty for everyone
-		// else's rules; evaluating field by field would let a stale value keep a downstream
-		// field alive.
-		$visibility = array();
-		if ( Jetpack_Forms::is_conditional_logic_enabled() ) {
-			$descriptors = array();
-			foreach ( $renderable as $field_id => $entry ) {
-				$descriptors[ $field_id ] = array(
-					'logic' => $entry['field']->get_attribute( 'conditionallogic' ),
-					'type'  => $entry['type'],
-				);
-			}
-			$visibility = Conditional_Logic::resolve_visibility( $descriptors, $form_values );
-		}
+		// Ask the form, rather than resolving a second time.
+		//
+		// Storage used to run its own resolve_visibility() over a different value source and a
+		// different field set than validation did, and the two disagreed. Validation reads
+		// get_computed_field_value() -- POST, then GET, then the field's default, then the
+		// logged-in user -- while this loop reads POST only; and it skips anything
+		// is_field_renderable() rejects, so a rule whose subject is an option-less select was
+		// evaluated during validation and ignored here.
+		//
+		// Unchecking a consent field prefilled from a query argument hit both: the browser
+		// posts nothing, validation fell back to the query argument and read it checked,
+		// storage read '' and read it unchecked. The dependent field was required-validated
+		// and then had its answer dropped -- the silently discarded answer this feature is
+		// supposed to make impossible.
+		//
+		// Returns an empty array when the flag is off, so there is nothing extra to guard.
+		$visibility = $form->get_resolved_field_visibility();
 
 		$i = 1;
 		foreach ( $renderable as $field_id => $entry ) {
