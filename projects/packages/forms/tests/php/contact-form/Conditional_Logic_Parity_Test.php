@@ -115,25 +115,4 @@ class Conditional_Logic_Parity_Test extends TestCase {
 		);
 	}
 
-	/**
-	 * Both evaluators cap the cascade at the same number of passes, so a form with circular
-	 * rules resolves to the same visibility in the browser and on the server.
-	 */
-	public function test_cascade_pass_cap_matches_the_typescript_source() {
-		$path = __DIR__ . '/../../../src/blocks/shared/conditional-logic/util/evaluate.ts';
-		$this->assertFileExists( $path, 'evaluate.ts moved; update this test to match.' );
-
-		$matched = preg_match(
-			'/export const MAX_CASCADE_PASSES = (\d+);/',
-			file_get_contents( $path ),
-			$found
-		);
-		$this->assertSame( 1, $matched, 'Could not locate MAX_CASCADE_PASSES in evaluate.ts.' );
-
-		$this->assertSame(
-			Conditional_Logic::MAX_CASCADE_PASSES,
-			(int) $found[1],
-			'Cascade pass cap drift between evaluate.ts and Conditional_Logic.'
-		);
-	}
 }

@@ -623,4 +623,52 @@ class Conditional_Logic_Test extends TestCase {
 	public function test_resolve_visibility_tolerates_an_empty_field_map() {
 		$this->assertSame( array(), Conditional_Logic::resolve_visibility( array(), array() ) );
 	}
+
+	/**
+	 * A deep chain must still reach its fixed point.
+	 *
+	 * The pass budget used to be clamped to a constant, so an acyclic chain deeper than the
+	 * clamp ran out of passes, was read as circular, and failed open -- leaving fields
+	 * visible that every rule said to hide.
+	 */
+	public function test_a_deep_acyclic_chain_resolves_completely() {
+		$depth       = 30;
+		$descriptors = array( 'f0' => array( 'type' => 'text' ) );
+		$values      = array( 'f0' => 'no' );
+
+		// Each field is shown only when the one before it says 'yes'. f0 says 'no', so every
+		// field downstream of it must resolve hidden.
+		for ( $i = 1; $i <= $depth; $i++ ) {
+			$descriptors[ "f$i" ] = array(
+				'type'  => 'text',
+				'logic' => array(
+					'enabled'         => true,
+					'action'          => 'show',
+					'logicalOperator' => 'all',
+					'controls'        => array(
+						'fieldValue' => array(
+							'rules' => array(
+								array(
+									'field'    => 'f' . ( $i - 1 ),
+									'operator' => 'is',
+									'value'    => 'yes',
+								),
+							),
+						),
+					),
+				),
+			);
+			$values[ "f$i" ] = 'yes';
+		}
+
+		$visible = Conditional_Logic::resolve_visibility( $descriptors, $values );
+
+		$this->assertTrue( $visible['f0'], 'The unconditional field is always visible.' );
+		for ( $i = 1; $i <= $depth; $i++ ) {
+			$this->assertFalse(
+				$visible[ "f$i" ],
+				"Field f$i is downstream of a false condition and must be hidden."
+			);
+		}
+	}
 }

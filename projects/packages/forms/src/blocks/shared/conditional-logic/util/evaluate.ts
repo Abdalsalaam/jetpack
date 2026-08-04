@@ -10,12 +10,6 @@
 import { OPERATORS, getTypeKeyForFieldType, operatorNeedsValue } from './field-types';
 import type { Operator, TypeKey } from './field-types';
 
-/**
- * Upper bound on cascade passes. A form would need a dependency chain this deep to need
- * them all; the cap exists so circular rules terminate instead of spinning.
- */
-export const MAX_CASCADE_PASSES = 25;
-
 export type Rule = {
 	field: string;
 	operator: Operator | string;
@@ -356,7 +350,10 @@ export const resolveVisibility = (
 
 	// An acyclic dependency chain settles at least one more level per pass, so this bound is
 	// always enough to reach a fixed point unless the rules are circular.
-	const maxPasses = Math.min( withLogic.length + 1, MAX_CASCADE_PASSES );
+	// One pass per conditional field, plus one to confirm nothing moved. Not clamped to a
+	// constant: that made an acyclic chain deeper than the clamp read as circular and fail
+	// open. The field count is what guarantees convergence, and it cannot exceed the form.
+	const maxPasses = withLogic.length + 1;
 
 	// Fields that change after the opening pass are reacting to another field's change, which
 	// is the signature of an oscillation. Collected across every pass, because a participant in

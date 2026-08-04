@@ -316,4 +316,39 @@ describe( 'resolveVisibility — cascade', () => {
 	it( 'tolerates an empty field map', () => {
 		expect( resolveVisibility( {}, {} ) ).toEqual( {} );
 	} );
+
+	/**
+	 * The pass budget used to be clamped to a constant, so an acyclic chain deeper than the
+	 * clamp ran out of passes, was read as circular, and failed open -- leaving fields
+	 * visible that every rule said to hide. Mirrors the PHP case of the same name.
+	 */
+	it( 'resolves a chain deeper than the old pass cap', () => {
+		const depth = 30;
+		const fields = { f0: { type: 'text' } };
+		const values = { f0: 'no' };
+
+		for ( let i = 1; i <= depth; i++ ) {
+			fields[ `f${ i }` ] = {
+				type: 'text',
+				logic: {
+					enabled: true,
+					action: 'show',
+					logicalOperator: 'all',
+					controls: {
+						fieldValue: {
+							rules: [ { field: `f${ i - 1 }`, operator: 'is', value: 'yes' } ],
+						},
+					},
+				},
+			};
+			values[ `f${ i }` ] = 'yes';
+		}
+
+		const visible = resolveVisibility( fields, values );
+
+		expect( visible.f0 ).toBe( true );
+		for ( let i = 1; i <= depth; i++ ) {
+			expect( visible[ `f${ i }` ] ).toBe( false );
+		}
+	} );
 } );

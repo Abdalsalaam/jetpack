@@ -40,12 +40,6 @@ class Conditional_Logic {
 	const OP_IS_NOT_CHECKED   = 'is_not_checked';
 
 	/**
-	 * Upper bound on cascade passes. A form would need a dependency chain this deep to use
-	 * them all; the cap exists so circular rules terminate instead of spinning.
-	 */
-	const MAX_CASCADE_PASSES = 25;
-
-	/**
 	 * Shortcode field type to comparison behavior.
 	 *
 	 * Mirrors TYPE_KEY_BY_FIELD_TYPE in
@@ -200,9 +194,16 @@ class Conditional_Logic {
 			return $visible;
 		}
 
-		// An acyclic dependency chain settles at least one more level per pass, so this bound
-		// always reaches a fixed point unless the rules are circular.
-		$max_passes = min( count( $with_logic ) + 1, self::MAX_CASCADE_PASSES );
+		// An acyclic dependency chain settles at least one more level per pass, so one pass
+		// per conditional field, plus one to confirm nothing moved, always reaches the fixed
+		// point unless the rules are circular.
+		//
+		// This used to be clamped to a constant 25, which made that claim false: a chain
+		// deeper than 24 ran out of passes, was read as circular, and failed open with
+		// fields left visible that should have been hidden. The bound is the field count
+		// because that is what actually guarantees convergence -- and it is self-limiting,
+		// since it can only be as large as the form.
+		$max_passes = count( $with_logic ) + 1;
 
 		// Fields that change after the opening pass are reacting to another field's change,
 		// which is the signature of an oscillation. Collected across every pass, because a
