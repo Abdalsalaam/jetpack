@@ -47,6 +47,7 @@ import {
 } from './utils/category-utils';
 import { getAllowedBlocks } from './utils/get-allowed-blocks';
 import { shouldAutoOpenInserter } from './utils/inserter-utils';
+import { FormWelcomeGuide, JETPACK_FORM_WELCOME_GUIDE } from './welcome-guide';
 import type { WPPlugin } from '@wordpress/plugins';
 
 type PluginSettings = Omit< WPPlugin, 'name' >;
@@ -134,6 +135,28 @@ const state = {
 	formBlockStable: false,
 	previousTickFormBlockClientId: null as string | null,
 	hasOpenedInserter: false,
+};
+
+/**
+ * Suppress the generic block editor welcome modal inside the form editor.
+ *
+ * Uses `setDefaults` rather than `set` on purpose: defaults live only for the
+ * current page load, so the user's own `core/edit-post` preference is left
+ * untouched and the generic modal still appears in the post and page editors.
+ * A user who has explicitly re-enabled the core guide keeps it, since a
+ * persisted preference takes precedence over a default.
+ *
+ * @param isSuppressed - Whether the core welcome modal should be suppressed.
+ */
+const setCoreWelcomeGuideSuppressed = ( isSuppressed: boolean ) => {
+	const { setDefaults } = dispatch( 'core/preferences' ) as {
+		setDefaults: ( scope: string, defaults: Record< string, unknown > ) => void;
+	};
+
+	setDefaults( 'core/edit-post', {
+		welcomeGuide: ! isSuppressed,
+		welcomeGuideTemplate: ! isSuppressed,
+	} );
 };
 
 const BLOCK_DIRECTORY_PLUGIN_NAME = 'block-directory';
@@ -412,6 +435,12 @@ const setupFormEditorSubscription = () => {
 					registerPlugin( FORM_POST_PUBLISH_PANEL_PLUGIN, {
 						render: FormPostPublishPanel,
 					} );
+
+					// Swap the generic block editor welcome modal for the form-specific one.
+					setCoreWelcomeGuideSuppressed( true );
+					registerPlugin( JETPACK_FORM_WELCOME_GUIDE, {
+						render: FormWelcomeGuide,
+					} );
 				} else {
 					// We just left the form editor.
 					document.body.classList.remove( 'post-type-jetpack_form' );
@@ -430,6 +459,11 @@ const setupFormEditorSubscription = () => {
 					if ( getPlugin( FORM_POST_PUBLISH_PANEL_PLUGIN ) ) {
 						unregisterPlugin( FORM_POST_PUBLISH_PANEL_PLUGIN );
 					}
+
+					if ( getPlugin( JETPACK_FORM_WELCOME_GUIDE ) ) {
+						unregisterPlugin( JETPACK_FORM_WELCOME_GUIDE );
+					}
+					setCoreWelcomeGuideSuppressed( false );
 
 					if ( state.categoriesSetUp ) {
 						state.categoriesSetUp = false;
