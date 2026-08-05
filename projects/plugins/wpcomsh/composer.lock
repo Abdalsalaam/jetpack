@@ -832,7 +832,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../packages/connection",
-                "reference": "f2b33840260110de1b61cfdb42e537e33989a4a7"
+                "reference": "7e7f7b027f2b3873580bfe4534dc8fdd9939f7e3"
             },
             "require": {
                 "automattic/jetpack-a8c-mc-stats": "@dev",
@@ -847,6 +847,7 @@
             },
             "require-dev": {
                 "automattic/jetpack-licensing": "@dev",
+                "automattic/jetpack-plans": "@dev",
                 "automattic/jetpack-sync": "@dev",
                 "automattic/jetpack-test-environment": "@dev",
                 "automattic/jetpack-wp-abilities": "@dev",
@@ -874,6 +875,7 @@
                 "dependencies": {
                     "test-only": [
                         "packages/licensing",
+                        "packages/plans",
                         "packages/sync"
                     ]
                 }
