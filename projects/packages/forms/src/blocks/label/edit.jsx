@@ -5,7 +5,7 @@ import { __ } from '@wordpress/i18n';
 import { clsx } from 'clsx';
 import { useSyncedAttributes } from '../shared/hooks/use-synced-attributes.jsx';
 import useVariationStyleProperties from '../shared/hooks/use-variation-style-properties.js';
-import { ALLOWED_FORMATS, DATE_FORMATS, FORM_STYLE } from '../shared/util/constants.js';
+import { ALLOWED_FORMATS, FORM_STYLE } from '../shared/util/constants.js';
 import getBlockStyle from '../shared/util/get-block-style.js';
 
 const SYNCED_ATTRIBUTE_KEYS = [
@@ -87,16 +87,12 @@ const LabelEdit = ( { clientId, attributes, name, setAttributes, context } ) => 
 	const {
 		'jetpack/form-class-name': formClassName,
 		'jetpack/field-required': required,
-		'jetpack/field-date-format': dateFormat,
 		'jetpack/field-share-attributes': isSynced,
 	} = context;
 	useSyncedAttributes( name, isSynced, SYNCED_ATTRIBUTE_KEYS, attributes, setAttributes );
 
 	const { label, placeholder, requiredText, requiredIndicator } = attributes;
 	const placeholderValue = placeholder !== '' ? placeholder : __( 'Add label…', 'jetpack-forms' );
-	const suffix = dateFormat
-		? `(${ DATE_FORMATS.find( f => f.value === dateFormat )?.label })`
-		: undefined;
 	const formStyle = getBlockStyle( formClassName );
 	const className = clsx( 'jetpack-field-label', {
 		'notched-label__label': formStyle === FORM_STYLE.OUTLINED,
@@ -153,7 +149,6 @@ const LabelEdit = ( { clientId, attributes, name, setAttributes, context } ) => 
 					value={ labelValue }
 					withoutInteractiveFormatting
 				/>
-				{ suffix && <span className="jetpack-field-label__suffix">{ suffix }</span> }
 				{ required && requiredIndicator && (
 					<RichText
 						allowedFormats={ ALLOWED_FORMATS }
