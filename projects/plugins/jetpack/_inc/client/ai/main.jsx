@@ -1,13 +1,14 @@
 /**
  * Root component for the Jetpack AI admin page.
  *
- * Two top-level tabs (Features | MCP Settings) with hash-based routing.
- * The MCP tab owns the read | write | setup sub-views, which render with
- * breadcrumbs in place of the tab bar.
+ * Three top-level tabs (Overview | Features | MCP Settings) with hash-based
+ * routing. The MCP tab owns the read | write | setup sub-views, which render
+ * with breadcrumbs in place of the tab bar.
  *
- * The Features tab is limited to internal testing environments for now
- * (jetpackAiSettings.showFeaturesView): without the flag the page keeps its
- * original MCP-only shape, with the MCP hub as the landing view and no tab bar.
+ * The Overview and Features tabs are limited to internal testing environments
+ * for now (jetpackAiSettings.showFeaturesView): without the flag the page
+ * keeps its original MCP-only shape, with the MCP hub as the landing view and
+ * no tab bar.
  */
 
 import { AdminPage, GlobalNotices, useGlobalNotices } from '@automattic/jetpack-components';
@@ -24,14 +25,15 @@ import McpSetup from './mcp/setup';
 import McpUpsell from './mcp/upsell';
 import { useMcpSettings } from './mcp/use-mcp-settings';
 import McpWrite from './mcp/write';
+import AiOverview from './overview/index';
 
 const MCP_SUB_VIEWS = [ 'read', 'write', 'setup' ];
 
 // Read at call time, not module scope, so the flag reflects the injected page data.
 const getTabViews = () =>
-	window?.jetpackAiSettings?.showFeaturesView ? [ 'features', 'mcp' ] : [ 'mcp' ];
+	window?.jetpackAiSettings?.showFeaturesView ? [ 'overview', 'features', 'mcp' ] : [ 'mcp' ];
 
-// The first tab is the default: Features when visible (matching the design),
+// The first tab is the default: Overview when visible (matching the design),
 // otherwise the MCP hub. A hash pointing at a hidden view falls back too.
 const getViewFromHash = () => {
 	const tabViews = getTabViews();
@@ -40,6 +42,7 @@ const getViewFromHash = () => {
 };
 
 const VIEW_TITLES = {
+	overview: __( 'Overview', 'jetpack' ),
 	// "WordPress Agent" is a product name and should not be translated.
 	features: 'WordPress Agent',
 	mcp: __( 'MCP Settings', 'jetpack' ),
@@ -109,7 +112,7 @@ export default function App() {
 	// Read at render time, not module scope, so the injected page data is
 	// honoured wherever App mounts (the inline script always runs first in
 	// production; tests inject per-case).
-	const { blogId, activityLogUrl, apiRoot, apiNonce } = window?.jetpackAiSettings ?? {};
+	const { blogId, activityLogUrl, apiRoot, apiNonce, upgradeUrl } = window?.jetpackAiSettings ?? {};
 	const [ view, setView ] = useState( getViewFromHash );
 	// Save feedback goes through the shared GlobalNotices snackbars (the
 	// design-system SnackbarList behind @wordpress/notices): transient,
@@ -275,6 +278,10 @@ export default function App() {
 										savingToolIds={ savingToolIds }
 										onNavigate={ handleMcpNavigate }
 										onUpdate={ handleUpdate }
+										// The activity log has exactly one home: Overview owns the
+										// row whenever the Overview tab exists; the MCP hub keeps
+										// it in the ungated MCP-only shape.
+										showActivityLog={ ! tabViews.includes( 'overview' ) }
 									/>
 								) }
 								{ view === 'read' && (
@@ -297,6 +304,10 @@ export default function App() {
 							</Stack>
 						) }
 					</>
+				) }
+
+				{ view === 'overview' && (
+					<AiOverview activityLogUrl={ activityLogUrl } upgradeUrl={ upgradeUrl } />
 				) }
 
 				{ view === 'features' && (
