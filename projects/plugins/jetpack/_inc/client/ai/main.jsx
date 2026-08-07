@@ -25,8 +25,6 @@ import McpUpsell from './mcp/upsell';
 import { useMcpSettings } from './mcp/use-mcp-settings';
 import McpWrite from './mcp/write';
 
-const { blogId, activityLogUrl, apiRoot, apiNonce } = window?.jetpackAiSettings ?? {};
-
 const MCP_SUB_VIEWS = [ 'read', 'write', 'setup' ];
 
 // Read at call time, not module scope, so the flag reflects the injected page data.
@@ -108,6 +106,10 @@ function Breadcrumbs( { view, onNavigate } ) {
  * @return {object} Component markup.
  */
 export default function App() {
+	// Read at render time, not module scope, so the injected page data is
+	// honoured wherever App mounts (the inline script always runs first in
+	// production; tests inject per-case).
+	const { blogId, activityLogUrl, apiRoot, apiNonce } = window?.jetpackAiSettings ?? {};
 	const [ view, setView ] = useState( getViewFromHash );
 	// Save feedback goes through the shared GlobalNotices snackbars (the
 	// design-system SnackbarList behind @wordpress/notices): transient,
