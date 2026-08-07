@@ -20,6 +20,9 @@ export default {
 			type: 'boolean',
 			default: true,
 		},
+		helpText: {
+			type: 'string',
+		},
 	},
 	category: 'contact-form',
 	providesContext: {
