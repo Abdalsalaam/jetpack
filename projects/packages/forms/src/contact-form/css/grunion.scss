@@ -893,7 +893,8 @@
 		.grunion-field-radio-wrap,
 		.grunion-field-select-wrap,
 		.grunion-field-file-wrap,
-		.grunion-field-phone-wrap
+		.grunion-field-phone-wrap,
+		.grunion-field-rating-wrap
 	) {
 		position: relative;
 		display: flex;
@@ -1252,8 +1253,15 @@ on production builds, the attributes are being reordered, causing side-effects
 	margin-left: var(--jetpack--contact-form--border-left-size, var(--jetpack--contact-form--border-size));
 }
 
-/* fields with multiple options */
-.wp-block-jetpack-contact-form:not(.is-style-outlined) .jetpack-field-multiple__fieldset {
+/* fields with multiple options.
+ *
+ * The rating field keeps its Default rendering under every form style, so it
+ * always needs this reset too. Radio and checkbox-multiple are excluded under
+ * Outlined on purpose: they use the fieldset's own border to draw the outlined
+ * box. Without this, the rating field inherits the browser's default fieldset
+ * border, padding and margin under Outlined. */
+.wp-block-jetpack-contact-form:not(.is-style-outlined) .jetpack-field-multiple__fieldset,
+.jetpack-field-multiple__fieldset.jetpack-field-rating {
 	padding: 8px 0 0 0;
 	border: 0;
 	margin: 0;

@@ -26,6 +26,36 @@ const getLabelOrFallback = ( label, placeholder ) => {
 
 const OPTIONS_FIELDS = [ 'jetpack/field-radio', 'jetpack/field-checkbox-multiple' ];
 
+/*
+ * Fields that keep the Default label rendering whatever form style is applied.
+ * Their input is not a single text-like control, so an absolutely positioned
+ * inset label would sit on top of the field instead of floating above it.
+ */
+const PLAIN_LABEL_FIELDS = [ 'jetpack/field-rating' ];
+
+/**
+ * Returns the block name of the field this label belongs to.
+ *
+ * useSiblingBlock() can't be used for this: it only ever resolves
+ * jetpack/input, jetpack/options or jetpack/phone-input, so fields with their
+ * own input block (such as jetpack/input-rating) get undefined back.
+ *
+ * @param {string} clientId - The label block's client ID.
+ * @return {string|undefined} The parent field block name, if there is one.
+ */
+function useParentFieldName( clientId ) {
+	return useSelect(
+		select => {
+			const { getBlockName, getBlockRootClientId } = select( blockEditorStore );
+
+			const parentClientId = getBlockRootClientId( clientId );
+
+			return parentClientId ? getBlockName( parentClientId ) : undefined;
+		},
+		[ clientId ]
+	);
+}
+
 function useSiblingBlock( clientId ) {
 	const inputBlock = useSelect(
 		select => {
@@ -98,9 +128,10 @@ const LabelEdit = ( { clientId, attributes, name, setAttributes, context } ) => 
 		? `(${ DATE_FORMATS.find( f => f.value === dateFormat )?.label })`
 		: undefined;
 	const formStyle = getBlockStyle( formClassName );
+	const hasPlainLabel = PLAIN_LABEL_FIELDS.includes( useParentFieldName( clientId ) );
 	const className = clsx( 'jetpack-field-label', {
-		'notched-label__label': formStyle === FORM_STYLE.OUTLINED,
-		'animated-label__label': formStyle === FORM_STYLE.ANIMATED,
+		'notched-label__label': formStyle === FORM_STYLE.OUTLINED && ! hasPlainLabel,
+		'animated-label__label': formStyle === FORM_STYLE.ANIMATED && ! hasPlainLabel,
 		'below-label__label': formStyle === FORM_STYLE.BELOW,
 	} );
 
@@ -137,7 +168,7 @@ const LabelEdit = ( { clientId, attributes, name, setAttributes, context } ) => 
 	return (
 		<WithNotchedWrapper
 			formStyle={ formStyle }
-			forcePlainStyle={ ! inputBlock }
+			forcePlainStyle={ ! inputBlock || hasPlainLabel }
 			styles={ variationProps?.style }
 			cssVars={ variationProps?.cssVars }
 			className={ variationProps?.className }
